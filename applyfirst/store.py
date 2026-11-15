@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,24 +34,42 @@ def init(con: sqlite3.Connection) -> None:
     con.commit()
 
 
-_con: sqlite3.Connection | None = None
+# One connection per thread: a sqlite3 connection must not be used by two threads at once
+# (a sweep writing in the background while the interface reads gave "API misuse" errors).
+# WAL mode lets the readers run while one writer works.
+_local = threading.local()
+_all: list[sqlite3.Connection] = []
+_all_lock = threading.Lock()
+_initialised: set[str] = set()
 
 
 def reset() -> None:
-    """Drop the shared connection (tests point APPLYFIRST_HOME elsewhere, then call this)."""
-    global _con
-    if _con is not None:
-        _con.close()
-    _con = None
+    """Close every connection (tests point APPLYFIRST_HOME elsewhere, then call this)."""
+    with _all_lock:
+        for c in _all:
+            try:
+                c.close()
+            except sqlite3.Error:
+                pass
+        _all.clear()
+        _initialised.clear()
+    _local.__dict__.clear()
 
 
 def db() -> sqlite3.Connection:
-    """Process-wide connection, initialised on first use."""
-    global _con
-    if _con is None:
-        _con = connect()
-        init(_con)
-    return _con
+    """This thread's connection to the current data home, initialised on first use."""
+    p = str(config.path("applyfirst.sqlite"))
+    con = getattr(_local, "con", None)
+    if con is not None and getattr(_local, "path", None) == p:
+        return con
+    con = connect(Path(p))
+    with _all_lock:
+        _all.append(con)
+        if p not in _initialised:
+            init(con)
+            _initialised.add(p)
+    _local.con, _local.path = con, p
+    return con
 
 
 def rows(sql: str, params: Iterable[Any] = ()) -> list[dict]:

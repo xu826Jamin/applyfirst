@@ -106,7 +106,8 @@ def run_log(run_id: str) -> str:
     if not r:
         raise HTTPException(404, "No such run.")
     p = Path(r["log_file"])
-    return p.read_text(encoding="utf-8") if p.exists() else ""
+    # The job may be mid-write; a cut multi-byte character must not fail the request.
+    return p.read_text(encoding="utf-8", errors="replace") if p.exists() else ""
 
 
 for _name in PACKAGES:

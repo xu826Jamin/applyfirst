@@ -107,7 +107,12 @@ def call(method: str, path: str, body=None, raw: bool = False, timeout: int = 60
             payload = r.read()
             return r.status, (payload if raw else json.loads(payload or b"null"))
     except urllib.error.HTTPError as e:
-        txt = e.read().decode(errors="replace")
+        try:
+            txt = e.read().decode(errors="replace")
+        except Exception:  # noqa: BLE001
+            txt = ""
+        if e.code >= 500:
+            check("server", f"{method} {path.split('?')[0]} answers without a server error", False, f"HTTP {e.code}")
         try:
             return e.code, json.loads(txt)
         except json.JSONDecodeError:
@@ -430,18 +435,28 @@ def main() -> int:
             print("server did not start:", server.stderr.read().decode(errors="replace")[-2000:])
             return 2
 
-        step_setup(pdf)
-        step_find(home, args.discover)
-        kept = step_filter()
-        step_order(kept)
-        step_resume()
-        app = step_apply(kept) if args.apply and kept else None
+        def guarded(name, fn, *a, default=None):
+            # A crash in one step is a FAIL in the report, never a silent stop or a pass.
+            try:
+                return fn(*a)
+            except Exception as e:  # noqa: BLE001
+                import traceback
+                traceback.print_exc()
+                check(name, "step ran without crashing", False, f"{type(e).__name__}: {e}"[:200])
+                return default
+
+        guarded("setup", step_setup, pdf)
+        guarded("find", step_find, home, args.discover)
+        kept = guarded("filter", step_filter, default=[]) or []
+        guarded("order", step_order, kept)
+        guarded("resume", step_resume)
+        app = guarded("apply", step_apply, kept) if args.apply and kept else None
         if not args.apply:
             print("\n== Apply skipped (run with --apply to fill one real form in review mode)")
-        step_answers()
-        step_replies(app)
-        step_interface()
-        step_cli(env)
+        guarded("answers", step_answers)
+        guarded("replies", step_replies, app)
+        guarded("interface", step_interface)
+        guarded("cli", step_cli, env)
     finally:
         server.terminate()
         try:
