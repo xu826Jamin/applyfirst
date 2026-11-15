@@ -46,7 +46,7 @@ _REGION_EXTRA = {"newfoundland": ("CA", "NL"), "pei": ("CA", "PE"), "pq": ("CA",
 
 COUNTRIES = {
     "CA": ["canada", "canadian", "can"],
-    "US": ["united states", "united states of america", "usa", "u.s.", "u.s.a.", "us", "america"],
+    "US": ["united states", "united states of america", "usa", "u.s.", "u.s.a.", "us", "america", "any state", "all states", "nationwide", "lower 48", "continental us"],
     "GB": ["united kingdom", "uk", "u.k.", "great britain", "england", "scotland", "wales",
            "northern ireland", "gb"],
     "IE": ["ireland", "ie"], "DE": ["germany", "deutschland"], "FR": ["france"],

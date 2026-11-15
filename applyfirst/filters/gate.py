@@ -130,6 +130,11 @@ def judge(posting: dict, settings: dict, profile: dict, now: dt.datetime | None 
             keeps.append(f"Matches your field: {F.FIELD_LABEL.get(hit[0], hit[0])}")
         else:
             fail("field", f"Field is {F.label(fields)}, not {join_words([F.FIELD_LABEL.get(f, f) for f in want_fields])}")
+    elif want_fields and len((posting.get("description") or "").strip()) > 200:
+        # The posting has real text and none of it reads as any field the user picked
+        # ("Claims Summer Student" kept for a software search). With no text there is no
+        # evidence either way, so that case is still kept.
+        fail("field", f"Nothing in the posting points to {join_words([F.FIELD_LABEL.get(f, f) for f in want_fields])}")
 
     # --- location
     loc = P.check_location(posting, search)
