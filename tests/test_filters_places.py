@@ -16,10 +16,37 @@ def check(location, search=None, **extra):
     "Mississauga, Ontario, Canada", "Kitchener-Waterloo", "Greater Toronto Area",
     "London, UK; Ontario, CAN",     # any one office that fits is enough
     "Remote",
-    "",                             # unknown passes: silence is not a mismatch
 ])
 def test_fits(loc):
     assert check(loc).ok
+
+
+# An unreadable place is kept only when the posting's own text names the user's area.
+# (Keeping every unreadable place filled a live Ontario search with Zurich, Cairo and Ohio.)
+@pytest.mark.parametrize("loc,description,ok", [
+    ("", "", False),
+    ("2 Locations", "Offices in Toronto and Austin.", True),
+    ("2 Locations", "Offices in Austin and Denver.", False),
+    ("Cairo - ETIC", "", False),
+    ("CH-Zurich-Observe", "Join our Zurich team.", False),
+    ("Cleveland Clinic Main Campus", "", False),
+    ("Head office", "Based in Mississauga, ON.", True),
+])
+def test_unreadable_place_needs_the_text_to_confirm(loc, description, ok):
+    from applyfirst.filters.places import check_location
+    res = check_location({"location": loc, "description": description, "title": "Software Intern"},
+                         {"countries": ["CA"], "regions": ["Ontario"], "cities": [], "remote": "include"})
+    assert res.ok is ok, res.reason
+    if not ok:
+        assert res.reason
+
+
+def test_country_only_search_still_needs_a_confirmed_country():
+    from applyfirst.filters.places import check_location
+    search = {"countries": ["CA"], "regions": [], "cities": [], "remote": "include"}
+    assert not check_location({"location": "Kuala Lumpur", "description": ""}, search).ok
+    assert check_location({"location": "Head office", "description": "Our Calgary, Alberta office"}, search).ok
+    assert check_location({"location": "Calgary, AB", "description": ""}, search).ok
 
 
 @pytest.mark.parametrize("loc,reason", [

@@ -101,7 +101,9 @@ def _add(country: str, region: str, names: str) -> None:
 
 _add("CA", "ON", "toronto|ottawa|mississauga|brampton|markham|vaughan|oakville|burlington|waterloo|"
                  "kitchener|guelph|windsor|richmond hill|barrie|oshawa|kanata|sudbury|st catharines|"
-                 "niagara falls|north york|scarborough|etobicoke|pickering|ajax|milton|stittsville")
+                 "niagara falls|north york|scarborough|etobicoke|pickering|ajax|milton|stittsville|"
+                 "kitchener-waterloo|cambridge on|peterborough|kingston on|thornhill|east gwillimbury|"
+                 "newmarket|aurora|whitby|concord on")
 _add("CA", "BC", "vancouver|burnaby|surrey|kelowna|richmond bc|north vancouver|coquitlam")
 _add("CA", "AB", "calgary|edmonton|red deer|lethbridge")
 _add("CA", "QC", "montreal|quebec city|laval|gatineau|sherbrooke|longueuil|saint-laurent")
@@ -415,30 +417,82 @@ def check_location(posting: dict, search: dict) -> LocationResult:
     elif posting_country and len(places) == 1 and not places[0].country:
         places[0].country = posting_country
 
-    country_fail = False
+    # A place we cannot read ("Cairo - ETIC", "2 Locations", "Cleveland Clinic Main Campus") is
+    # kept only when the posting's own text names somewhere the user wants. Keeping every
+    # unreadable place filled a live Ontario search with Zurich, Cairo and Ohio postings.
+    confirmed = None
+
+    def text_confirms() -> bool:
+        nonlocal confirmed
+        if confirmed is None:
+            confirmed = _confirmed_by_text(posting, wants)
+        return confirmed
+
+    country_fail = unconfirmed = False
     for p in places:
         as_remote = fully_remote or (p.remote and not _HYBRID.search(p.text))
         country = p.country
         if wants.countries and country and country not in wants.countries:
             country_fail = True
             continue
-        if as_remote or not (wants.regions or wants.cities):
-            return LocationResult(True, kept=("Remote role" if as_remote else
-                                              (f"Location: {shown}" if shown else "")),
-                                  remote=any_remote, fully_remote=fully_remote)
+        if as_remote:
+            return LocationResult(True, kept="Remote role", remote=any_remote, fully_remote=fully_remote)
+        if not (wants.regions or wants.cities):
+            if country or (not wants.countries) or text_confirms():
+                return LocationResult(True, kept=(f"Location: {shown}" if shown else ""),
+                                      remote=any_remote, fully_remote=fully_remote)
+            unconfirmed = True
+            continue
         if _region_match(p, wants) or _city_match(p, wants):
             return LocationResult(True, kept=f"Location: {shown}", remote=any_remote,
                                   fully_remote=fully_remote)
         if not p.specific:
-            return LocationResult(True, kept=(f"Location: {shown}" if shown else ""),
-                                  remote=any_remote, fully_remote=fully_remote)
-    if country_fail and not any(
+            if text_confirms():
+                return LocationResult(True, kept=(f"Location: {shown}" if shown else "Location named in the posting"),
+                                      remote=any_remote, fully_remote=fully_remote)
+            unconfirmed = True
+    if country_fail and not unconfirmed and not any(
             not (wants.countries and pl.country and pl.country not in wants.countries)
             for pl in places):
         return LocationResult(False, f"Outside your countries: {shown or 'unknown place'}",
                               remote=any_remote, fully_remote=fully_remote, code="country")
+    if unconfirmed:
+        return LocationResult(False, f"Location not confirmed in your area: {shown or 'not stated'}",
+                              remote=any_remote, fully_remote=fully_remote, code="location-unknown")
     return LocationResult(False, f"Outside your locations: {shown or 'unknown place'}",
                           remote=any_remote, fully_remote=fully_remote, code="location")
+
+
+def _confirmed_by_text(posting: dict, wants: Wants) -> bool:
+    """True when the posting's title or description names a place the user wants."""
+    text = fold(" ".join(str(posting.get(k) or "") for k in ("title", "description", "location")))
+    if not text.strip():
+        return False
+    names: list[str] = list(wants.cities)
+    abbrevs: list[str] = []
+    for r in wants.regions:
+        if "-" in r and r[:2].isupper():
+            c, code = r.split("-", 1)
+            full = (CA_PROVINCES if c == "CA" else US_STATES if c == "US" else {}).get(code)
+            if full:
+                names.append(full)
+            abbrevs.append(code.lower())
+            # the region's known cities ("Toronto" confirms Ontario)
+            names += [city for city, (cc, rc) in _CITIES.items() if cc == c and rc == code]
+        elif r:
+            names.append(r)
+    if not names:
+        for c in wants.countries:
+            names += [n for n in COUNTRIES.get(c, []) if len(n) > 3 and n not in _AMBIGUOUS_CODES]
+            table = CA_PROVINCES if c == "CA" else US_STATES if c == "US" else {}
+            names += list(table.values())
+    for n in names:
+        if re.search(r"(?<![a-z0-9])" + re.escape(fold(n)) + r"(?![a-z0-9])", text):
+            return True
+    # "Toronto, ON" style: a region code right after a comma, read in the location field only
+    # (in prose ", on" is just the word "on")
+    loc = fold(str(posting.get("location") or ""))
+    return any(re.search(r",\s*" + re.escape(a) + r"(?![a-z0-9])", loc) for a in abbrevs)
 
 
 def infer_place(posting: dict) -> tuple[str, str]:

@@ -10,6 +10,10 @@ your inbox so you can see which applications turn into interviews and which do n
 Everything runs on your own computer. Your resume, answers and inbox never leave it, except
 the applications you send to employers and the work Claude does for you.
 
+> **Want it with no install?** applyfirst hosted keeps applying while your laptop is off, with
+> nothing to set up. [Join the waitlist](https://forms.gle/MVQg9XdZPRxgSjXS7) and you will be
+> first in when it opens.
+
 ## What you get
 
 - **Fresh postings first.** Thousands of company boards (Greenhouse, Lever, Ashby, Workday,
@@ -36,7 +40,7 @@ signed in. For filling forms, either the Claude in Chrome extension or Node.js (
 browser).
 
 ```
-pip install git+https://github.com/<owner>/applyfirst
+pip install git+https://github.com/xu826Jamin/applyfirst
 applyfirst
 ```
 
