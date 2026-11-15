@@ -39,7 +39,11 @@ async def only_this_app(request, call_next):
         return JSONResponse({"detail": "Not allowed."}, status_code=403)
     if request.headers.get("sec-fetch-site") == "cross-site":
         return JSONResponse({"detail": "Not allowed."}, status_code=403)
-    return await call_next(request)
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        # Revalidate every time, so an updated install never runs a cached old interface.
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.on_event("startup")

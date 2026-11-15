@@ -413,7 +413,7 @@ async function jobsScreen(page, c) {
   c.onTick = async (st, kinds) => {
     if (!kinds.includes("sweep") || ++n % 2) return;
     const before = sig();
-    const res = await api("GET", "/filters/queue?view=kept&limit=200");
+    const res = await api("GET", "/filters/queue?view=kept&limit=500");
     if (res.ok) { const keptNow = listOf(res.data); if (keptNow.map((p) => p.id).join(",") !== J.lists.kept.map((p) => p.id).join(",")) { await load(); } else if (before !== sig()) render(true); }
   };
 }
