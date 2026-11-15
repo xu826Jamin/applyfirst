@@ -27,11 +27,47 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
     return con
 
 
+def _schema_scripts() -> list[str]:
+    files = [PKG / "schema.sql"] + sorted(PKG.glob("*/schema.sql"))
+    return [f.read_text(encoding="utf-8") for f in files]
+
+
 def init(con: sqlite3.Connection) -> None:
-    con.executescript((PKG / "schema.sql").read_text(encoding="utf-8"))
-    for extra in sorted(PKG.glob("*/schema.sql")):
-        con.executescript(extra.read_text(encoding="utf-8"))
+    for script in _schema_scripts():
+        con.executescript(script)
+    upgrade(con)
     con.commit()
+
+
+def upgrade(con: sqlite3.Connection) -> list[str]:
+    """Bring an older database up to the current schema by adding any missing columns.
+
+    CREATE TABLE IF NOT EXISTS never changes a table that already exists, so a new column in a
+    later version would otherwise break every existing install. The current schema is built in
+    memory and compared table by table. Returns what was added (for tests and logs)."""
+    ref = sqlite3.connect(":memory:")
+    try:
+        for script in _schema_scripts():
+            ref.executescript(script)
+        added = []
+        tables = [r[0] for r in ref.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+        for t in tables:
+            have = {r[1] for r in con.execute(f"PRAGMA table_info({t})")}
+            if not have:
+                continue
+            for _cid, name, ctype, notnull, default, _pk in ref.execute(f"PRAGMA table_info({t})"):
+                if name in have:
+                    continue
+                col = f'"{name}" {ctype or ""}'
+                if default is not None:
+                    col += f" DEFAULT {default}"
+                    if notnull:
+                        col += " NOT NULL"
+                con.execute(f"ALTER TABLE {t} ADD COLUMN {col}")
+                added.append(f"{t}.{name}")
+        return added
+    finally:
+        ref.close()
 
 
 # One connection per thread: a sqlite3 connection must not be used by two threads at once

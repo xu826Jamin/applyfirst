@@ -112,8 +112,20 @@ def status() -> dict:
         ),
         "pending_questions": count("SELECT COUNT(*) n FROM answers WHERE pending=1"),
         "running": jobs.running(),
+        "claude": _claude_info(),
+        "spent_today_usd": round(_spent_today(), 2),
         "last_runs": store.rows("SELECT * FROM runs ORDER BY started_at DESC LIMIT 10"),
     }
+
+
+def _claude_info() -> dict:
+    from . import claude
+    return claude.version_info()
+
+
+def _spent_today() -> float:
+    from . import claude
+    return claude.spent_today()
 
 
 @app.get("/api/runs")

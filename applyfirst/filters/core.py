@@ -139,17 +139,24 @@ def _with_reasons(row: dict) -> dict:
     return row
 
 
+_VIEW_WHERE = {
+    "kept": "verdict='keep' AND COALESCE(user_action,'')=''",
+    "approved": "user_action='approved'",
+    "skipped": "user_action='skipped' OR (verdict='skip' AND COALESCE(user_action,'')<>'approved')",
+    "all": "1=1",
+}
+# Everything but `raw` (the source's whole download, never shown): reading it for every row
+# made a Jobs page with a few thousand postings take seconds.
+_COLUMNS = ("id, source, company, title, location, remote, country, url, apply_url, ats, "
+            "description, posted_at, first_seen_at, deadline, level, field, term_months, "
+            "fingerprint, duplicate_of, alive, verdict, verdict_reasons, user_action")
+
+
 def view_rows(view: str) -> list[dict]:
     if view not in VIEWS:
         raise ValueError(f"view must be one of {', '.join(VIEWS)}")
-    where = {
-        "kept": "verdict='keep' AND COALESCE(user_action,'')=''",
-        "approved": "user_action='approved'",
-        "skipped": "user_action='skipped' OR (verdict='skip' AND COALESCE(user_action,'')<>'approved')",
-        "all": "1=1",
-    }[view]
     return [_with_reasons(r) for r in store.rows(
-        f"SELECT * FROM postings WHERE {_LIVE} AND ({where})")]
+        f"SELECT {_COLUMNS} FROM postings WHERE {_LIVE} AND ({_VIEW_WHERE[view]})")]
 
 
 def queue(settings: dict, view: str = "kept", limit: int = 100) -> list[dict]:
@@ -161,14 +168,18 @@ def queue(settings: dict, view: str = "kept", limit: int = 100) -> list[dict]:
     ordered = order(rows, settings, experience=experience)
     if limit is not None and limit >= 0:
         ordered = ordered[:limit]
-    terms, tags = experience_profile(experience)
-    for p in ordered:
-        p["rough_match"] = rough_match(p, terms, tags)
+    # The match score costs about 10 ms a posting; only work it out when the order uses it.
+    q = settings.get("queue") or {}
+    if "match" in (q.get("order_by"), q.get("then_by")):
+        terms, tags = experience_profile(experience)
+        for p in ordered:
+            p["rough_match"] = rough_match(p, terms, tags)
     return ordered
 
 
 def counts() -> dict:
     out = {}
     for v in VIEWS:
-        out[v] = len(view_rows(v))
+        r = store.one(f"SELECT COUNT(*) n FROM postings WHERE {_LIVE} AND ({_VIEW_WHERE[v]})")
+        out[v] = r["n"] if r else 0
     return out

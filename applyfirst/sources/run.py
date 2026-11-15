@@ -349,6 +349,13 @@ def sweep(run_id: str) -> str:
     con.commit()
 
     matches = _run_filters(run_id, now, notes)
+    try:
+        from .. import alerts
+        note = alerts.after_sweep(run_id, now)
+        if note:
+            notes.append(note)
+    except Exception as e:  # an alert problem never fails the sweep; it is reported
+        notes.append(f"Alerts could not be sent ({e}).")
     return _summary(boards_checked, total_new, matches, rep, failed_kinds, notes, src)
 
 

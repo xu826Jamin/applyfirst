@@ -457,10 +457,14 @@ export const SETTING_DEFS = {
   "claude.command": { label: "Claude command", help: "The command that starts Claude Code on this computer.", type: "text" },
   "claude.model": { label: "Model", help: "Which Claude model does the work.", type: "text", list: "models" },
   "claude.max_turns_per_application": { label: "Steps per application", help: "A cap on how long Claude works on one application.", type: "number", min: 1 },
+  "claude.daily_budget_usd": { label: "Daily spending limit (USD)", help: "Claude stops for the day once this much of your plan is used. 0 means no limit.", type: "number", min: 0 },
+  "alerts.desktop": { label: "Desktop notification", help: "A notification on this computer when new matches arrive.", type: "toggle" },
+  "alerts.email": { label: "Email me new matches", help: "Sends a short list to your own address, using the email settings above.", type: "toggle" },
+  "alerts.min_new": { label: "Only when at least", help: "How many new matches before an alert is sent.", type: "number", min: 1 },
 };
 
-export const GROUP_OF = { search: "What to look for", sources: "Where to look", queue: "Order", apply: "Applying", tracker: "Email replies", schedule: "Schedule", claude: "Claude" };
-export const GROUP_ORDER = ["What to look for", "Where to look", "Order", "Applying", "Email replies", "Schedule", "Claude", "More"];
+export const GROUP_OF = { search: "What to look for", sources: "Where to look", queue: "Order", apply: "Applying", tracker: "Email replies", schedule: "Schedule", alerts: "Alerts", claude: "Claude" };
+export const GROUP_ORDER = ["What to look for", "Where to look", "Order", "Applying", "Email replies", "Schedule", "Alerts", "Claude", "More"];
 
 export function leafPaths(obj, prefix = "") {
   const out = [];
@@ -487,6 +491,8 @@ export function warningActive(path, value) {
   if (path === "apply.mode") return value === "auto";
   if (path === "apply.verify_resume_lines") return value === false;
   if (path === "apply.pace_seconds") return typeof value === "number" && value < 3;
+  if (path === "claude.daily_budget_usd") return value === 0;
+  if (path === "apply.browser") return value === "playwright";
   if (typeof value === "boolean") return value;
   return !!value;
 }

@@ -401,7 +401,7 @@ function stepProfile(shell, draw) {
   shell.append(h("div", { class: "wiz-foot" }, h("button", { class: "btn quiet", onclick: () => { W.step = 1; draw(); } }, "Back"), next));
 }
 
-const TARGET_KEYS = ["search.countries", "search.regions", "search.cities", "search.remote", "search.levels", "search.fields", "search.start_terms"];
+const TARGET_KEYS = ["search.countries", "search.regions", "search.cities", "search.remote", "search.levels", "search.fields", "search.start_terms", "apply.mode", "apply.future_commitments"];
 
 function stepTargets(shell, draw) {
   shell.append(h("h1", null, "What are you looking for?"), h("p", { class: "lead" }, "We check thousands of company career pages and keep only what fits. Narrow it down now, change it any time."));

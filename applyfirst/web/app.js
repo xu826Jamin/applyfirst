@@ -165,6 +165,12 @@ async function homeScreen(page, c) {
     return;
   }
   const searchBtn = h("button", { class: "btn primary", onclick: () => startSweep(searchBtn) }, icon("search", 16), "Search for new postings");
+  const cl = st.claude || {};
+  if (cl.installed === false) {
+    page.append(notice("Claude Code is not installed, so applications cannot be filled yet. Searching still works. Install Claude Code, sign in once, then reload this page. See the setup guide on GitHub.", "error"));
+  } else if (cl.installed && cl.version && cl.ok === false) {
+    page.append(notice(`Claude Code ${cl.version} is too old for applyfirst. Update it, then reload this page.`, "error"));
+  }
 
   // One primary action: the most useful thing to do next.
   let hero;
@@ -213,7 +219,10 @@ function statusPill(s) {
 // ------------------------------------------------------------------ jobs
 
 async function jobsScreen(page, c) {
+  // A list holds at most LIST_LIMIT rows; past that the tab shows the true total from the server.
+  const shownCount = (v) => (J.counts && J.lists[v].length >= LIST_LIMIT ? J.counts[v] : J.lists[v].length);
   const J = { view: "kept", lists: { kept: [], approved: [], skipped: [] }, sel: new Set(), open: new Set(), why: {}, loaded: false, unavailable: false, error: "" };
+  const LIST_LIMIT = 500;
   const VIEWS = [["kept", "Kept"], ["approved", "Approved"], ["skipped", "Skipped"]];
 
   const settings = await loadSettings();
@@ -254,7 +263,9 @@ async function jobsScreen(page, c) {
   page.append(addForm, orderBox, h("div", { style: "height:14px" }), box);
 
   async function load() {
-    const res = await Promise.all(VIEWS.map(([v]) => api("GET", `/filters/queue?view=${v}&limit=200`)));
+    const res = await Promise.all(VIEWS.map(([v]) => api("GET", `/filters/queue?view=${v}&limit=${LIST_LIMIT}`)));
+    const withCounts = res.find((r) => r.ok && r.data && r.data.counts);
+    J.counts = withCounts ? withCounts.data.counts : null;
     VIEWS.forEach(([v], i) => { J.lists[v] = res[i].ok ? listOf(res[i].data) : []; });
     J.unavailable = res.every((r) => !r.ok);
     J.error = (res.find((r) => !r.ok) || {}).error || "";
@@ -362,7 +373,7 @@ async function jobsScreen(page, c) {
     const tabs = h("div", { class: "toolbar" },
       h("div", { class: "seg", role: "group", "aria-label": "Job views" }, VIEWS.map(([v, l]) =>
         h("button", { type: "button", "aria-pressed": String(J.view === v), onclick: () => { J.view = v; J.sel.clear(); render(); } },
-          l, h("span", { class: "count" }, String(J.lists[v].length))))),
+          l, h("span", { class: "count" }, String(shownCount(v)))))),
       list.length ? h("label", { class: "row small muted" }, h("input", { type: "checkbox", checked: list.length > 0 && J.sel.size === list.length,
         onchange: (e) => { J.sel = e.target.checked ? new Set(list.map((p) => p.id)) : new Set(); render(true); } }), "Select all") : null);
     const parts = [];

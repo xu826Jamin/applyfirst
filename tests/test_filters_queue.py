@@ -183,7 +183,12 @@ def test_queue_limit_and_rows(stocked):
     p = got[0]
     assert p["description"] and p["apply_url"] is not None             # full row, for the apply package
     assert isinstance(p["reasons"], list) and p["reasons"]
-    assert set(p["rough_match"]) == {"shared", "asked", "terms"}
+    # the match score is only worked out when the order uses it (it cost seconds per page)
+    assert "rough_match" not in p
+    s = config.load_settings()
+    s["queue"]["order_by"] = "match"
+    got = filters.queue(s, view="all", limit=1)
+    assert set(got[0]["rough_match"]) == {"shared", "asked", "terms"}
 
 
 def test_queue_rejects_unknown_view(stocked):

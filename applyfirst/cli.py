@@ -22,9 +22,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd in (None, "serve"):
         import uvicorn
 
-        port = getattr(args, "port", 8765)
+        wanted = getattr(args, "port", 8765)
+        port = _free_port(wanted)
+        if port is None:
+            print(f"Ports {wanted} to {wanted + 9} are all in use. Close the other program or run "
+                  f"`applyfirst serve --port <number>`.")
+            return 1
+        if port != wanted:
+            print(f"Port {wanted} is in use (is applyfirst already open?), so using {port}.")
+        url = f"http://127.0.0.1:{port}/"
+        print(f"applyfirst is running at {url}\nKeep this window open while you use it. "
+              f"Press Ctrl+C to stop.")
         if not getattr(args, "no_browser", False):
-            webbrowser.open(f"http://127.0.0.1:{port}/")
+            webbrowser.open(url)
         uvicorn.run("applyfirst.server:app", host="127.0.0.1", port=port, log_level="warning")
         return 0
 
@@ -52,6 +62,19 @@ def main(argv: list[str] | None = None) -> int:
 
         return 0 if run("sync", sync) else 1
     return 1
+
+
+def _free_port(start: int, tries: int = 10) -> int | None:
+    import socket
+
+    for port in range(start, start + tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+    return None
 
 
 if __name__ == "__main__":

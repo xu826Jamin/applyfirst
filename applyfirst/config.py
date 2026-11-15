@@ -117,7 +117,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "pace_seconds": 3,             # minimum gap between requests to one site
     },
     "tracker": {
-        "email": {"enabled": False, "imap_host": "", "imap_port": 993, "username": "", "mailbox": "INBOX"},
+        "email": {"enabled": False, "imap_host": "", "imap_port": 993, "username": "", "mailbox": "INBOX",
+                  "smtp_host": "", "smtp_port": 465},   # smtp only for alert emails; blank = from imap host
         "sync_interval_hours": 24,
     },
     "schedule": {"run_daily": False, "time": "08:00"},

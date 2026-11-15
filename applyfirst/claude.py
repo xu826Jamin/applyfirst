@@ -32,6 +32,30 @@ def available() -> bool:
     return shutil.which(cmd) is not None
 
 
+MIN_VERSION = (2, 1, 0)   # needs --chrome, --tools, --json-schema, --max-budget-usd, dontAsk
+_version_cache: dict = {}
+
+
+def version_info() -> dict:
+    """{installed, version, ok} for the status screen. Cached for the life of the process."""
+    if _version_cache:
+        return _version_cache
+    exe = shutil.which(config.get(config.load_settings(), "claude.command", "claude"))
+    info = {"installed": bool(exe), "version": "", "ok": False}
+    if exe:
+        try:
+            out = subprocess.run([exe, "--version"], capture_output=True, text=True, timeout=30).stdout
+            import re
+            m = re.search(r"(\d+)\.(\d+)\.(\d+)", out or "")
+            if m:
+                info["version"] = m.group(0)
+                info["ok"] = tuple(int(x) for x in m.groups()) >= MIN_VERSION
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    _version_cache.update(info)
+    return info
+
+
 def run(
     prompt: str,
     run_id: str | None = None,
