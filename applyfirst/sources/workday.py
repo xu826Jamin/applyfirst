@@ -44,6 +44,12 @@ OFFSET_CEILING = 2000
 MAX_SPLIT_DEPTH = 2             # (values of facet A) x (values of facet B) cleared every tenant measured
 MAX_SPLIT_SLICES = 100          # bounds one facet with hundreds of tiny values
 CANADA_FACET = {"locationCountry": ["a30a87ed25634629aa6c3958aa2b91ea"]}
+# searchText ranks, it does not filter: a search for "intern" returns the whole board with the
+# interns first. With a term, paging stops once this many pages in a row hold no title that
+# matches any early-career word, instead of reading the whole board once per term.
+EARLY_TITLE_RE = re.compile(
+    r"\b(intern|internship|co-?op|student|graduate|new grad|apprentice|fellow|trainee|junior|entry)", re.I)
+IRRELEVANT_PAGES_TO_STOP = 2
 
 
 # ----------------------------------------------------------------- clamp detection and split
@@ -126,7 +132,7 @@ def _search_url(board: dict) -> str:
 
 
 def _paginate(http, url, term, applied, max_pages):
-    postings, total, facets, page = [], None, [], 0
+    postings, total, facets, page, dry = [], None, [], 0, 0
     while page < max_pages:
         data = http.post_json(url, {"appliedFacets": applied, "limit": PAGE,
                                     "offset": page * PAGE, "searchText": term})
@@ -141,6 +147,10 @@ def _paginate(http, url, term, applied, max_pages):
         page += 1
         if len(posts) < PAGE:
             break
+        if term:
+            dry = 0 if any(EARLY_TITLE_RE.search(p.get("title") or "") for p in posts) else dry + 1
+            if dry >= IRRELEVANT_PAGES_TO_STOP:
+                break
         if isinstance(total, int) and page * PAGE >= total:
             break
     return postings, total, facets, page
@@ -173,7 +183,9 @@ def _crawl_term(http, url, term, use_country, budget, notes):
 
     absorb(postings)
     clamped = clamp_note(total, facets)
-    if clamped:
+    # Splitting past the clamp exists to read a whole board; a ranked term search has already
+    # stopped where relevance ran out, so it never needs the split.
+    if clamped and not term:
         notes.append(clamped)
         spent = [0]
         base_excluded = ["locationCountry"] if state["country"] else []
