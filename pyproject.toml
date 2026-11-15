@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "applyfirst"
+version = "0.1.0"
+description = "Find job postings the hour they go up, apply first, and see what is actually working."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "pypdf>=4.0",
+  "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+applyfirst = "applyfirst.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["applyfirst*"]
+
+[tool.setuptools.package-data]
+applyfirst = ["**/*.sql", "**/*.json", "**/*.js", "**/*.html", "**/*.css", "**/*.md"]

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.pytest_cache/
+build/
+dist/
+# User data never lives in the repo. Default home is ~/.applyfirst; this covers a local override.
+data/
+*.sqlite
+*.sqlite3
+.env
