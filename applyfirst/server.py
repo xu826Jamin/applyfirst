@@ -20,6 +20,27 @@ WEB = Path(__file__).resolve().parent / "web"   # inside the package, so pip ins
 
 app = FastAPI(title="applyfirst", docs_url="/api/docs")
 
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
+
+
+@app.middleware("http")
+async def only_this_app(request, call_next):
+    """The API is reachable from this computer only, and only from this app's own page.
+    Without this, any website open in the browser could post to 127.0.0.1 and start
+    applications or change settings, and a DNS-rebinding site could read the data."""
+    from fastapi.responses import JSONResponse
+    from urllib.parse import urlparse
+
+    host = (request.headers.get("host") or "").rsplit(":", 1)[0].lower()
+    if host not in _LOCAL_HOSTS:
+        return JSONResponse({"detail": "Not allowed."}, status_code=403)
+    origin = request.headers.get("origin")
+    if origin and (urlparse(origin).hostname or "").lower() not in {h.strip("[]") for h in _LOCAL_HOSTS}:
+        return JSONResponse({"detail": "Not allowed."}, status_code=403)
+    if request.headers.get("sec-fetch-site") == "cross-site":
+        return JSONResponse({"detail": "Not allowed."}, status_code=403)
+    return await call_next(request)
+
 
 @app.on_event("startup")
 def _start_scheduler() -> None:

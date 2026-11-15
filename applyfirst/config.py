@@ -125,6 +125,12 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "command": "claude",
         "model": "sonnet",
         "max_turns_per_application": 60,
+        "daily_budget_usd": 10,        # Claude spending cap per day; 0 = no cap
+    },
+    "alerts": {
+        "desktop": True,               # a notification on this computer when new matches arrive
+        "email": False,                # an email to yourself (uses the email settings below)
+        "min_new": 1,                  # only alert when at least this many new matches
     },
 }
 
@@ -136,7 +142,8 @@ WARNINGS: dict[str, str] = {
     "apply.mode": "Auto mode submits without showing you first. Some employers allow one application per role or per season.",
     "apply.verify_resume_lines": "With this off, generated resume lines are not checked against your experience.",
     "apply.pace_seconds": "Below about 3 seconds, job sites start refusing requests.",
-    "apply.browser": "The Playwright browser closes when Claude finishes, so in review mode the filled form is lost before you can submit it. Use Chrome for review mode.",
+    "claude.daily_budget_usd": "At 0 there is no cap: a large batch can use a lot of your Claude plan in one day.",
+    "apply.browser":"The Playwright browser closes when Claude finishes, so in review mode the filled form is lost before you can submit it. Use Chrome for review mode.",
 }
 
 

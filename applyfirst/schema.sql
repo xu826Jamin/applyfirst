@@ -77,6 +77,14 @@ CREATE TABLE IF NOT EXISTS experience (
   position      INTEGER NOT NULL DEFAULT 0
 );
 
+-- Every Claude call's cost, for the daily spending cap.
+CREATE TABLE IF NOT EXISTS claude_spend (
+  at            TEXT NOT NULL,            -- local time with offset
+  usd           REAL NOT NULL,
+  run_id        TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS claude_spend_at ON claude_spend(at);
+
 -- Every unattended or button-started job: sweep, apply batch, mail sync.
 CREATE TABLE IF NOT EXISTS runs (
   id            TEXT PRIMARY KEY,

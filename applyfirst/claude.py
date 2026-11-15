@@ -45,6 +45,11 @@ def run(
     timeout: int = 1800,
 ) -> Result:
     s = config.load_settings()
+    left = budget_left(s)
+    if left is not None and left <= 0:
+        cap = config.get(s, "claude.daily_budget_usd")
+        return Result(False, error=f"Today's Claude spending limit (${cap:.2f}) is used up. "
+                                   "Raise it in Settings or wait until tomorrow.")
     exe = config.get(s, "claude.command", "claude")
     # On Windows npm installs claude as a .CMD shim, which subprocess only runs by full path.
     exe = shutil.which(exe) or exe
@@ -52,10 +57,21 @@ def run(
     cmd += ["--model", model or config.get(s, "claude.model", "sonnet")]
     if max_turns:
         cmd += ["--max-turns", str(max_turns)]
-    if allowed_tools:
-        cmd += ["--allowedTools", *allowed_tools]
-    # Headless runs cannot answer permission prompts; the allowed tool list is the boundary.
-    cmd += ["--permission-mode", "bypassPermissions"]
+    if left is not None:
+        cmd += ["--max-budget-usd", f"{left:.2f}"]
+    # Locked down: job postings are untrusted text that goes into the prompt, so the background
+    # Claude gets no shell, no file reading or writing and no web fetching. A browser run gets
+    # the browser tools (and ToolSearch, which loads them); anything else is refused without a
+    # prompt ("dontAsk").
+    cmd += ["--tools", "ToolSearch" if browser else ""]
+    allowed = list(allowed_tools or [])
+    if browser == "chrome-extension":
+        allowed.append("mcp__claude-in-chrome__*")
+    elif browser == "playwright":
+        allowed.append("mcp__playwright__*")
+    if allowed:
+        cmd += ["--allowedTools", *allowed]
+    cmd += ["--permission-mode", "dontAsk"]
     tmp_files: list[str] = []
     if browser == "chrome-extension":
         cmd += ["--chrome"]
@@ -109,6 +125,35 @@ def run(
             res.structured = json.loads(res.text)
         except json.JSONDecodeError:
             pass
+    record_spend(res.cost_usd, run_id or "")
     if run_id:
         store.log(run_id, f"claude: ok={res.ok} turns={res.turns} cost_usd={res.cost_usd:.4f} {res.error[:300]}")
     return res
+
+
+# --------------------------------------------------------------------------- spending cap
+
+
+def spent_today() -> float:
+    """Claude spend since local midnight, from every call this app made."""
+    from datetime import datetime
+
+    midnight = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+    r = store.one("SELECT COALESCE(SUM(usd), 0) s FROM claude_spend WHERE at >= ?",
+                  (midnight.isoformat(timespec="seconds"),))
+    return float(r["s"] if r else 0.0)
+
+
+def budget_left(settings: dict | None = None) -> float | None:
+    """Dollars left today, or None when there is no cap."""
+    cap = config.get(settings or config.load_settings(), "claude.daily_budget_usd")
+    if not cap:
+        return None
+    return max(0.0, float(cap) - spent_today())
+
+
+def record_spend(usd: float, run_id: str) -> None:
+    if usd:
+        from datetime import datetime
+        store.execute("INSERT INTO claude_spend (at, usd, run_id) VALUES (?,?,?)",
+                      (datetime.now().astimezone().isoformat(timespec="seconds"), usd, run_id))
