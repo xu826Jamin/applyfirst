@@ -52,6 +52,9 @@ def verify_pdf(pdf_path: str, bank_entries: list[dict], profile: dict,
     known = [b["text"] for e in bank_entries for b in e["bullets"]]
     for e in bank_entries:
         known += [e["title"], e["org"], e["dates"]] + list(render.heading_parts(e)[:3])
+        if e.get("section") == "skills" and e.get("text"):
+            # a hand-typed skills list ("Python, SQL") is expanded term by term on the page
+            known += [t.strip() for t in re.split(r"[,;]", e["text"]) if t.strip()]
     known += list(render.HEADINGS.values())
     known += [render.full_name(profile), profile.get("phone", ""), profile.get("email", "")]
     known += [t for t, _ in render.contact_parts(profile)]

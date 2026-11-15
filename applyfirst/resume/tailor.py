@@ -239,9 +239,20 @@ def pick_skills(entries: list[dict], chosen: list[dict], wanted: set[str] | None
     page = [b for p in chosen for b in p["selected"]]
     groups: dict[str, list[tuple]] = {}
     order = 0
+    # Imports store one term per row (title = term, org = group). A row typed by hand may hold
+    # a list instead ("Languages" / "Python, SQL"); expand it so it is not silently dropped.
+    expanded = []
     for e in entries:
-        if e["section"] != "skills" or not e["title"].strip():
+        if e["section"] != "skills":
             continue
+        text = (e.get("text") or "").strip()
+        if text and ("," in text or ";" in text):
+            group = (e.get("org") or e.get("title") or "Skills").strip()
+            expanded += [{**e, "title": t.strip(), "org": group, "text": ""}
+                         for t in re.split(r"[,;]", text) if t.strip()]
+        elif e["title"].strip() or text:
+            expanded.append({**e, "title": e["title"].strip() or text})
+    for e in expanded:
         item = e["title"].strip()
         aliases = skill_aliases(item)
         order += 1
