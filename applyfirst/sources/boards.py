@@ -47,6 +47,16 @@ def user_path() -> Path:
     return config.path("boards.json")
 
 
+def discovered() -> bool:
+    """True once a discovery run has finished (not merely started)."""
+    return config.path("discovery.json").exists()
+
+
+def mark_discovered(tried: int, added: int) -> None:
+    config.path("discovery.json").write_text(
+        json.dumps({"finished_at": store.now(), "tried": tried, "added": added}), encoding="utf-8")
+
+
 def load_seed() -> list[dict]:
     return [b for b in (_clean(e) for e in json.loads(SEED.read_text(encoding="utf-8"))) if b]
 
@@ -142,15 +152,23 @@ def discover(run_id: str, http: Http | None = None, limit: int = 6000, workers: 
         except Exception as e:      # a reader bug must not stop discovery
             return b, 0, f"error: {e}"
 
-    kept, failed = [], 0
+    kept, failed, pending = [], 0, []
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for b, n, err in pool.map(probe, candidates):
+        for i, (b, n, err) in enumerate(pool.map(probe, candidates), 1):
             if err:
                 failed += 1
             elif n > 0:
                 kept.append(b)
-    if kept:
-        save_user(load_user() + kept)
+                pending.append(b)
+            if i % 250 == 0:
+                # Save as we go: a stopped run keeps what it found and the log shows progress.
+                if pending:
+                    save_user(load_user() + pending)
+                    pending = []
+                store.log(run_id, f"Discovery: {i} of {len(candidates)} tried, {len(kept)} added so far")
+    if pending:
+        save_user(load_user() + pending)
+    mark_discovered(len(candidates), len(kept))
     msg = f"Tried {len(candidates)} boards, added {len(kept)} that have postings, {failed} could not be read."
     if notes:
         msg += f" {len(notes)} directory(ies) could not be reached."

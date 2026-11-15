@@ -265,7 +265,7 @@ def sweep(run_id: str) -> str:
     failed_kinds: dict[str, int] = {}
 
     if src.get("company_boards", True):
-        if not boards_mod.user_path().exists():
+        if not boards_mod.discovered():
             # First sweep: grow the shipped seed list from the public directories so a new
             # user starts with thousands of boards, not only the seed.
             store.log(run_id, "First sweep: discovering company boards")
