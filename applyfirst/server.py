@@ -21,6 +21,27 @@ WEB = Path(__file__).resolve().parent.parent / "web"
 app = FastAPI(title="applyfirst", docs_url="/api/docs")
 
 
+@app.on_event("startup")
+def _start_scheduler() -> None:
+    import os
+
+    if os.environ.get("APPLYFIRST_NO_SCHEDULER"):
+        return
+    from .daily import start_scheduler
+
+    start_scheduler()
+
+
+@app.post("/api/daily")
+def run_daily_now() -> dict:
+    from .daily import routine
+
+    try:
+        return {"run_id": jobs.spawn("daily", routine)}
+    except RuntimeError as e:
+        raise HTTPException(409, str(e))
+
+
 @app.get("/api/profile")
 def get_profile() -> dict:
     return config.load_profile()

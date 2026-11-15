@@ -45,7 +45,10 @@ def run(
     timeout: int = 1800,
 ) -> Result:
     s = config.load_settings()
-    cmd = [config.get(s, "claude.command", "claude"), "-p", "--output-format", "json"]
+    exe = config.get(s, "claude.command", "claude")
+    # On Windows npm installs claude as a .CMD shim, which subprocess only runs by full path.
+    exe = shutil.which(exe) or exe
+    cmd = [exe, "-p", "--output-format", "json"]
     cmd += ["--model", model or config.get(s, "claude.model", "sonnet")]
     if max_turns:
         cmd += ["--max-turns", str(max_turns)]

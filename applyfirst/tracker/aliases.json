@@ -1,0 +1,16 @@
+{
+  "_comment": "Generic company aliases shipped with applyfirst: the employer key (first word of the company name as written in the application, lower case) maps to wording that appears in that employer's mail but not in the company name. Users add their own in <data home>/tracker_aliases.json with the same shape, plus an optional \"ids\" map from a requisition id to a list of application ids.",
+  "companies": {
+    "procter": ["p&g", "pgcareers", "@pg.com"],
+    "meta": ["facebook", "@fb.com", "@meta.com"],
+    "alphabet": ["google", "@google.com"],
+    "google": ["alphabet", "@google.com"],
+    "amazon": ["amazon.jobs", "@amazon.com"],
+    "pwc": ["pricewaterhousecoopers", "@pwc.com"],
+    "ibm": ["international business machines"],
+    "rbc": ["royal bank of canada", "@rbc.com"],
+    "td": ["toronto-dominion", "@td.com"],
+    "cibc": ["canadian imperial bank", "@cibc.com"]
+  },
+  "ids": {}
+}

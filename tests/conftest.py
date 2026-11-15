@@ -26,6 +26,7 @@ ALEX = {
 @pytest.fixture
 def tmp_home(tmp_path, monkeypatch):
     monkeypatch.setenv("APPLYFIRST_HOME", str(tmp_path))
+    monkeypatch.setenv("APPLYFIRST_NO_SCHEDULER", "1")
     store.reset()
     store.db()
     yield tmp_path

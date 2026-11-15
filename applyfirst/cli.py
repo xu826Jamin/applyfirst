@@ -35,22 +35,23 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{kind}: {summary}")
         return ok
 
-    ok = True
-    if args.cmd in ("sweep", "daily"):
+    if args.cmd == "daily":
+        from .daily import routine
+
+        return 0 if run("daily", routine) else 1
+    if args.cmd == "sweep":
         from .sources import sweep
 
-        ok &= run("sweep", sweep)
-    if args.cmd == "apply" or args.cmd == "daily":
-        from . import config
+        return 0 if run("sweep", sweep) else 1
+    if args.cmd == "apply":
         from .apply import apply_queue
 
-        if args.cmd == "apply" or config.get(config.load_settings(), "apply.mode") == "auto":
-            ok &= run("apply", lambda rid: apply_queue(rid, limit=getattr(args, "limit", None)))
-    if args.cmd in ("sync", "daily"):
+        return 0 if run("apply", lambda rid: apply_queue(rid, limit=args.limit)) else 1
+    if args.cmd == "sync":
         from .tracker import sync
 
-        ok &= run("sync", sync)
-    return 0 if ok else 1
+        return 0 if run("sync", sync) else 1
+    return 1
 
 
 if __name__ == "__main__":
