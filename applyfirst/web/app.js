@@ -452,6 +452,14 @@ async function applicationsScreen(page, c) {
     const r = await api("POST", `/apply/applications/${encodeURIComponent(a.id)}/status`, { status });
     if (r.ok) { a.status = status; toast("Marked as submitted."); render(); tick(); } else toast("That did not save. " + r.error, { error: true });
   }
+  async function retry(a) {
+    const r = await api("POST", `/apply/applications/${encodeURIComponent(a.id)}/status`, { status: "queued" });
+    if (!r.ok) return toast("That did not save. " + r.error, { error: true });
+    a.status = "queued";
+    const run = await api("POST", "/apply/run", {});
+    toast(run.ok ? "Back in the queue. Filling now." : "Back in the queue. It goes out with the next run.");
+    render(); tick();
+  }
   async function setOutcome(a, outcome) {
     const r = await api("POST", `/tracker/applications/${encodeURIComponent(a.id)}/outcome`, { outcome });
     if (r.ok) { a.outcome = outcome; a.outcome_source = "manual"; toast(outcome ? `Marked as ${outcome}.` : "Outcome cleared."); render(); tick(); } else toast("That did not save. " + r.error, { error: true });
@@ -462,6 +470,8 @@ async function applicationsScreen(page, c) {
     const acts = [];
     if (needs) acts.push(h("button", { class: "btn small primary", onclick: () => setStatus(a, "submitted") }, "I submitted it"));
     if (a.status === "needs-you" && /question|answer/i.test(a.needs_you || "")) acts.push(h("a", { class: "btn small", href: "#/answers" }, "Open Answers"));
+    if (a.status === "needs-you") acts.push(h("button", { class: "btn small", onclick: () => retry(a) }, "Continue"));
+    if (a.status === "failed") acts.push(h("button", { class: "btn small primary", onclick: () => retry(a) }, "Try again"));
     if (a.status === "submitted") {
       acts.push(selectControl({ value: a.outcome || "", label: `Outcome for ${a.company}`,
         options: [["", a.outcome ? "No outcome" : "Mark outcome"], ...OUTCOMES], onChange: (v) => setOutcome(a, v) }));

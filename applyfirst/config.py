@@ -98,7 +98,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "google_recent": False,
         "email_alerts": False,
         "school_board": {"enabled": False, "name": "", "url": ""},
-        "sweep_interval_hours": 24,
+        "sweep_interval_hours": 6,     # while the app is open; 0 = only when you press Search
     },
     "queue": {
         # newest | deadline | company | match

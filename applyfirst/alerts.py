@@ -94,9 +94,17 @@ def email_self(title: str, rows: list[dict], settings: dict) -> str:
     msg.set_content("New postings that match what you are looking for:\n\n" + "\n".join(lines)
                     + "\n\nOpen applyfirst to approve the ones you want.")
     try:
-        with smtplib.SMTP_SSL(host, int(em.get("smtp_port") or 465), context=ssl.create_default_context(), timeout=30) as s:
-            s.login(user, password)
-            s.send_message(msg)
+        port = int(em.get("smtp_port") or 465)
+        ctx = ssl.create_default_context()
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, context=ctx, timeout=30) as s:
+                s.login(user, password)
+                s.send_message(msg)
+        else:  # 587 and others: plain connect, then STARTTLS (iCloud, Outlook/Office 365)
+            with smtplib.SMTP(host, port, timeout=30) as s:
+                s.starttls(context=ctx)
+                s.login(user, password)
+                s.send_message(msg)
         return ""
     except (OSError, smtplib.SMTPException) as e:
         return str(e)[:200]

@@ -46,15 +46,44 @@ def _due(now: datetime, hhmm: str) -> bool:
     return (now.hour, now.minute) >= (h, m)
 
 
+def _hours_since_last(kinds: tuple[str, ...]) -> float | None:
+    marks = ",".join("?" * len(kinds))
+    r = store.one(f"SELECT started_at FROM runs WHERE kind IN ({marks}) ORDER BY started_at DESC LIMIT 1", kinds)
+    if not r:
+        return None
+    started = datetime.fromisoformat(r["started_at"])
+    return (datetime.now(started.tzinfo) - started).total_seconds() / 3600
+
+
+def _interval_due(kinds: tuple[str, ...], hours: float) -> bool:
+    if not hours or hours <= 0:
+        return False
+    since = _hours_since_last(kinds)
+    # Never ran: the user starts the first search from setup; intervals take over after that.
+    return since is not None and since >= hours
+
+
 def tick() -> str | None:
+    """Start whatever is due. While the app is open: the daily run at its time, a search every
+    sources.sweep_interval_hours (fresh postings are the point), replies every
+    tracker.sync_interval_hours. Only one job of each kind at a time."""
     s = config.load_settings()
-    if not config.get(s, "schedule.run_daily"):
+    busy = set(jobs.running())
+    if busy & {"daily", "sweep", "apply"}:
         return None
-    if not _due(datetime.now(), config.get(s, "schedule.time", "08:00")) or _ran_today():
+    if (config.get(s, "schedule.run_daily") and _due(datetime.now(), config.get(s, "schedule.time", "08:00"))
+            and not _ran_today()):
+        return jobs.spawn("daily", routine)
+    if not config.is_set_up():
         return None
-    if "daily" in jobs.running():
-        return None
-    return jobs.spawn("daily", routine)
+    if _interval_due(("sweep", "daily"), float(config.get(s, "sources.sweep_interval_hours", 0) or 0)):
+        from .sources import sweep
+        return jobs.spawn("sweep", sweep)
+    if (config.get(s, "tracker.email.enabled") and "sync" not in busy
+            and _interval_due(("sync", "daily"), float(config.get(s, "tracker.sync_interval_hours", 0) or 0))):
+        from .tracker import sync
+        return jobs.spawn("sync", sync)
+    return None
 
 
 def start_scheduler(interval: int = 60) -> threading.Thread:

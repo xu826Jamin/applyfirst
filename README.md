@@ -10,6 +10,10 @@ your inbox so you can see which applications turn into interviews and which do n
 Everything runs on your own computer. Your resume, answers and inbox never leave it, except
 the applications you send to employers and the work Claude does for you.
 
+![Jobs: the newest postings that fit you, each with why it was kept](docs/images/jobs.png)
+
+![Settings: every choice in plain words, saved straight away](docs/images/settings.png)
+
 > **Want it with no install?** applyfirst hosted keeps applying while your laptop is off, with
 > nothing to set up. [Join the waitlist](https://forms.gle/MVQg9XdZPRxgSjXS7) and you will be
 > first in when it opens.
@@ -33,24 +37,60 @@ the applications you send to employers and the work Claude does for you.
 - **Know what is working.** Replies are read from your inbox and matched to applications. See your
   interview rate by source, resume, field, and how fresh the posting was when you applied.
 
+**Where it is strongest today.** The built-in and discovered boards come mostly from technology and
+engineering employers, so applyfirst is strongest for tech internships, co-ops and new-grad roles
+in Canada and the US. Other fields and senior roles find fewer postings today. Any posting can be
+added by pasting its link on the **Jobs** screen.
+
+## Guides
+
+- [Getting started](docs/GETTING_STARTED.md): from nothing to your first application
+- [Connect your email](docs/EMAIL.md): reply tracking and alert emails (Gmail, iCloud, Yahoo)
+- [Run it every day](docs/DAILY.md): the in-app schedule, Task Scheduler, cron, launchd and alerts
+- [Troubleshooting](docs/TROUBLESHOOTING.md): the fix for the common snags
+- [Security](SECURITY.md): what is protected and how, and how to report a problem
+- [Contributing](CONTRIBUTING.md): how the code fits together, tests, and adding a job-site reader
+- [Changelog](CHANGELOG.md)
+
 ## Install
 
 You need:
 
 - Python 3.10 or newer
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code), signed in
-- Google Chrome with the Claude in Chrome extension connected to Claude Code. Applications are
-  filled in your own Chrome, so the sites you are already signed in to just work, and in review
-  mode the filled form stays open for you to check and submit.
+- [Claude Code](https://code.claude.com/docs/en/quickstart), signed in (tested with 2.1.325, needs
+  2.1.0 or newer)
+- Google Chrome with the [Claude in Chrome extension](https://code.claude.com/docs/en/chrome)
+  connected to Claude Code. Applications are filled in your own Chrome, so the sites you are
+  already signed in to just work, and in review mode the filled form stays open for you to check
+  and submit.
 
 ```
 pip install git+https://github.com/xu826Jamin/applyfirst
 applyfirst
 ```
 
-`applyfirst` opens the app in your browser at http://127.0.0.1:8765. The setup takes about ten
-minutes: upload your resume, confirm your experience, say what you are looking for, press
-**Find jobs**.
+`applyfirst` opens the app in your browser at http://127.0.0.1:8765. If your terminal says the
+command is not found (common on Windows), run `python -m applyfirst` instead. Keep that terminal
+window open while you use the app. The setup takes about ten minutes: upload your resume, confirm
+your experience, say what you are looking for, press **Find jobs**. The full walk-through is in
+[Getting started](docs/GETTING_STARTED.md).
+
+### Updating
+
+```
+pip install -U --force-reinstall git+https://github.com/xu826Jamin/applyfirst
+```
+
+Your data upgrades itself.
+
+### Uninstalling
+
+```
+pip uninstall applyfirst
+```
+
+Then delete the `~/.applyfirst` folder (your data home) if you want your profile, resumes and
+applications gone too.
 
 ## Applying
 
@@ -63,16 +103,18 @@ minutes: upload your resume, confirm your experience, say what you are looking f
    email marks it for you).
 4. Anything it could not do waits under **Needs you**: a sign-in, a CAPTCHA, or a question it has
    no answer for. Answer a question once under **Answers** and it is used everywhere after.
-5. Connect your email in Settings and replies are matched to applications automatically.
-   **Insights** then shows what is getting you interviews.
+5. Connect your email in Settings and replies are matched to applications for you (they are read
+   in the daily run, or any time you run `applyfirst sync`). **Insights** then shows what is
+   getting you interviews.
 
 The first search reads the built-in boards in about ten minutes, then grows to thousands of boards in
 the background; later searches only pick up what is new.
 
 ## Run it every day
 
-Turn on **Run daily** in Settings, or schedule `applyfirst daily` yourself (Task Scheduler,
-cron or launchd). It finds new postings, applies in auto mode, and reads new replies.
+Turn on **Run every day** in Settings (it works while the app is open), or schedule
+`applyfirst daily` yourself (Task Scheduler, cron or launchd) to run with the app closed. It finds
+new postings, applies in auto mode, and reads new replies. See [Run it every day](docs/DAILY.md).
 
 ```
 applyfirst sweep     # find new postings now
@@ -97,20 +139,25 @@ done.
 
 ## What it costs
 
-Filling a form uses Claude. The **Insights** screen shows your real average cost per application,
-measured from Claude Code's own usage report.
+Filling a form uses Claude. On a single test, filling one application measured about $0.37 of
+Claude usage. Your real average shows on the **Insights** screen, measured from Claude Code's own
+usage report. A daily spending limit is on by default ($10; change it in Settings, under Claude),
+so a big batch never surprises you.
 
 ## Where your data lives
 
 `~/.applyfirst` (set `APPLYFIRST_HOME` to move it): your profile, settings, experience bank,
 resumes, applications and a local database. The mail password, if you connect your inbox, is in
 `secrets.json` there and is never shown back by the app. Mail is read only: applyfirst never sends,
-moves, flags or deletes a message.
+moves, flags or deletes a message. Connecting email takes two minutes: see
+[Connect your email](docs/EMAIL.md). How the app is kept safe, and the one limit to know about, is
+in [Security](SECURITY.md).
 
 ## Contributing
 
 Job sites change their forms. When one breaks, open an issue with the site and the step, or send a
-fix. `docs/CONTRACTS.md` explains how the parts fit together. Tests run offline:
+fix. [CONTRIBUTING.md](CONTRIBUTING.md) covers the live check and how to fix or add a job-site
+reader, and `docs/CONTRACTS.md` explains how the parts fit together. Tests run offline:
 
 ```
 pip install -e ".[dev]"
