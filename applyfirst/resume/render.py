@@ -266,6 +266,15 @@ def pdf_text(pdf_path: str) -> str:
     """Text as a parser would read it. Empty string when nothing can be extracted."""
     try:
         import pypdf
-        return "\n".join((p.extract_text() or "") for p in pypdf.PdfReader(pdf_path).pages)
+        pages = pypdf.PdfReader(pdf_path).pages
+        # Layout mode rebuilds lines from where words sit on the page. Chrome on macOS writes
+        # each word as its own text run, which the plain mode returns one word per line.
+        try:
+            text = "\n".join((p.extract_text(extraction_mode="layout") or "") for p in pages)
+            text = "\n".join(re.sub(r"[ \t]{2,}", "  ", ln).strip() for ln in text.splitlines())
+            text = re.sub(r"\n{3,}", "\n\n", text)
+        except TypeError:   # an old pypdf without layout mode
+            text = ""
+        return text or "\n".join((p.extract_text() or "") for p in pages)
     except Exception:  # noqa: BLE001  a corrupt file reads as empty, and the caller says so
         return ""

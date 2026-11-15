@@ -136,6 +136,7 @@ WARNINGS: dict[str, str] = {
     "apply.mode": "Auto mode submits without showing you first. Some employers allow one application per role or per season.",
     "apply.verify_resume_lines": "With this off, generated resume lines are not checked against your experience.",
     "apply.pace_seconds": "Below about 3 seconds, job sites start refusing requests.",
+    "apply.browser": "The Playwright browser closes when Claude finishes, so in review mode the filled form is lost before you can submit it. Use Chrome for review mode.",
 }
 
 

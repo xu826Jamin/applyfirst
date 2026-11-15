@@ -266,45 +266,56 @@ def sweep(run_id: str) -> str:
     failed_kinds: dict[str, int] = {}
 
     if src.get("company_boards", True):
+        ctx = Ctx(http=http, terms=search_terms(settings), countries=_wanted(settings))
+
+        def read(boards: list[dict]) -> None:
+            """Boards go through in batches; each batch's new postings are written and filtered
+            straight away, so matches show up while the sweep is still running. (Holding every
+            board's download until the end also grew one sweep past 1.6 GB.)"""
+            nonlocal boards_checked, new_total
+            store.log(run_id, f"Reading {len(boards)} boards ({len(ctx.terms) or 'no'} search terms for Workday)")
+            n = 0
+            batch_size = WORKERS * 4
+            with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+                for start in range(0, len(boards), batch_size):
+                    futures = [pool.submit(_read_board, b, ctx) for b in boards[start:start + batch_size]]
+                    for fut in as_completed(futures):
+                        board, result, err = fut.result()
+                        n += 1
+                        boards_checked += 1
+                        if err:
+                            failed_kinds[err.kind] = failed_kinds.get(err.kind, 0) + 1
+                            _record_state(con, board, now, err.kind, 0)
+                            store.log(run_id, f"Could not read {board['ats']}/{board['token']}: {err}")
+                        else:
+                            if result.note:
+                                store.log(run_id, f"{board['ats']}/{board['token']}: {result.note}")
+                            _handle_board(con, board, result, now, settings, rep, new_rows, body_queue)
+                            _record_state(con, board, now, "ok", len(result.postings))
+                            rep["listed"] += len(result.postings)
+                        if n % 500 == 0:
+                            store.log(run_id, f"{n} of {len(boards)} boards read, {new_total + len(new_rows)} new so far")
+                    del futures
+                    new_total += len(new_rows)
+                    _store_new(con, new_rows)
+                    _filter_batch(run_id, [r["id"] for r, _ in new_rows])
+                    new_rows.clear()
+                    con.commit()
+
+        first = boards_mod.load_all()
+        read(first)
         if not boards_mod.discovered():
-            # First sweep: grow the shipped seed list from the public directories so a new
-            # user starts with thousands of boards, not only the seed.
-            store.log(run_id, "First sweep: discovering company boards")
+            # First sweep: the built-in boards are read first so matches appear within minutes;
+            # then the list grows from the public directories and the new boards are read too.
+            store.log(run_id, "First sweep: discovering more company boards")
             try:
                 notes.append(boards_mod.discover(run_id, http=http))
+                seen = {board_key(b) for b in first}
+                more = [b for b in boards_mod.load_all() if board_key(b) not in seen]
+                if more:
+                    read(more)
             except Exception as e:  # discovery failing never blocks the sweep
                 notes.append(f"Board discovery did not finish ({e}); used the built-in list.")
-        boards = boards_mod.load_all()
-        ctx = Ctx(http=http, terms=search_terms(settings), countries=_wanted(settings))
-        store.log(run_id, f"Reading {len(boards)} boards ({len(ctx.terms) or 'no'} search terms for Workday)")
-        # Boards go through in batches and each batch's new postings are written straight away.
-        # Holding every board's download until the end grew one sweep past 1.6 GB.
-        n = 0
-        batch_size = WORKERS * 4
-        with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-            for start in range(0, len(boards), batch_size):
-                futures = [pool.submit(_read_board, b, ctx) for b in boards[start:start + batch_size]]
-                for fut in as_completed(futures):
-                    board, result, err = fut.result()
-                    n += 1
-                    boards_checked += 1
-                    if err:
-                        failed_kinds[err.kind] = failed_kinds.get(err.kind, 0) + 1
-                        _record_state(con, board, now, err.kind, 0)
-                        store.log(run_id, f"Could not read {board['ats']}/{board['token']}: {err}")
-                    else:
-                        if result.note:
-                            store.log(run_id, f"{board['ats']}/{board['token']}: {result.note}")
-                        _handle_board(con, board, result, now, settings, rep, new_rows, body_queue)
-                        _record_state(con, board, now, "ok", len(result.postings))
-                        rep["listed"] += len(result.postings)
-                    if n % 500 == 0:
-                        store.log(run_id, f"{n} of {len(boards)} boards read, {new_total + len(new_rows)} new so far")
-                del futures
-                new_total += len(new_rows)
-                _store_new(con, new_rows)
-                new_rows.clear()
-                con.commit()
     else:
         notes.append("Company boards are switched off in your settings.")
 
@@ -397,6 +408,20 @@ def _mark_duplicates(con) -> None:
         "FROM postings WHERE alive=1 AND first_seen_at >= ?", (since,))]
     found = dedupe.find_duplicates([r for r in rows if not r["duplicate_of"]])
     con.executemany("UPDATE postings SET duplicate_of=? WHERE id=?", [(v, k) for k, v in found.items()])
+
+
+def _filter_batch(run_id: str, ids: list[str]) -> None:
+    """Judge one batch of new postings now, so they show in the Jobs list mid-sweep. The full
+    pass at the end of the sweep still runs and has the final word."""
+    if not ids:
+        return
+    try:
+        from .. import filters
+        filters.evaluate_all(None, ids=ids)
+    except ImportError:
+        return
+    except Exception as e:  # a filter bug must not stop the sweep; the end-of-sweep pass retries
+        store.log(run_id, f"Could not judge a batch yet: {e}")
 
 
 def _run_filters(run_id: str, since: str, notes: list[str]):

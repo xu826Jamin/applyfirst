@@ -75,15 +75,22 @@ def _log(run_id: str | None, line: str) -> None:
         store.log(run_id, line)
 
 
-def evaluate_all(run_id: str | None = None) -> dict:
-    """Classify and evaluate every live, non-duplicate posting and write verdict and
-    verdict_reasons. Returns counts: total, evaluated, kept, skipped, new_kept (kept now but
-    not before), by_reason (skip reasons by check), summary (one plain sentence)."""
+def evaluate_all(run_id: str | None = None, ids: list[str] | None = None) -> dict:
+    """Classify and evaluate every live, non-duplicate posting (or only `ids`, used mid-sweep)
+    and write verdict and verdict_reasons. Returns counts: total, evaluated, kept, skipped,
+    new_kept (kept now but not before), by_reason (skip reasons by check), summary."""
     settings = config.load_settings()
     profile = config.load_profile()
     now = now_utc()
     applied = _applied_rows()
-    rows = store.rows("SELECT * FROM postings WHERE alive=1 AND COALESCE(duplicate_of,'')=''")
+    sql = "SELECT * FROM postings WHERE alive=1 AND COALESCE(duplicate_of,'')=''"
+    if ids is not None:
+        rows = []
+        for i in range(0, len(ids), 500):
+            chunk = ids[i:i + 500]
+            rows += store.rows(sql + f" AND id IN ({','.join('?' * len(chunk))})", chunk)
+    else:
+        rows = store.rows(sql)
     kept = skipped = new_kept = 0
     by_reason: dict[str, int] = {}
     updates = []

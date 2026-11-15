@@ -46,14 +46,14 @@ export function profileForm(profile) {
   root.append(
     section("About you", "This fills the standard boxes on every application.",
       h("div", { class: "grid two" },
-        bound(profile, "name.first", "First name", { autocomplete: "given-name", placeholder: "Alex" }),
-        bound(profile, "name.last", "Last name", { autocomplete: "family-name", placeholder: "Rivera" }),
+        bound(profile, "name.first", "First name", { autocomplete: "given-name", placeholder: "First name" }),
+        bound(profile, "name.last", "Last name", { autocomplete: "family-name", placeholder: "Last name" }),
         bound(profile, "name.preferred", "Preferred name", { help: "Optional. Used where a form asks what to call you." }),
-        bound(profile, "email", "Email", { type: "email", autocomplete: "email", placeholder: "alex.rivera@example.com" }),
-        bound(profile, "phone", "Phone", { type: "tel", autocomplete: "tel", placeholder: "555-0100" }),
+        bound(profile, "email", "Email", { type: "email", autocomplete: "email", placeholder: "you@example.com" }),
+        bound(profile, "phone", "Phone", { type: "tel", autocomplete: "tel", placeholder: "Phone number" }),
       ),
       h("div", { class: "grid four" },
-        bound(profile, "location.city", "City", { placeholder: "Toronto" }),
+        bound(profile, "location.city", "City", { placeholder: "City" }),
         bound(profile, "location.region", "State or province", { placeholder: "Ontario" }),
         bound(profile, "location.country", "Country", { placeholder: "CA", help: "Two-letter code." }),
         bound(profile, "location.postal_code", "Postal code"),
@@ -302,7 +302,7 @@ function stepResume(shell, draw) {
   const input = h("input", { type: "file", accept: "application/pdf,.pdf", id: "resume-file" });
   const zone = h("label", { class: "drop", for: "resume-file" },
     icon("upload", 32), h("div", { style: "font-weight:600" }, "Choose your resume PDF"),
-    h("div", { class: "help" }, "or drop it here. It is read on this computer."), input);
+    h("div", { class: "help" }, "or drop it here. Claude reads it once to pull out your experience."), input);
   const upload = async (file) => {
     if (!file) return;
     status.replaceChildren(notice("Reading your resume. This can take a minute.", "info"));
@@ -313,6 +313,10 @@ function stepResume(shell, draw) {
     zone.style.pointerEvents = "";
     if (res.ok) {
       W.rows = listOf(res.data, "experience");
+      // The import fills blank profile fields (name, email, phone, links) from the resume
+      // header; reload so the Profile step shows them and saving does not blank them again.
+      const fresh = await api("GET", "/profile");
+      if (fresh.ok && fresh.data) W.profile = fresh.data;
       W.step = 1;
       draw();
     } else {
