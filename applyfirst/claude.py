@@ -56,6 +56,16 @@ def version_info() -> dict:
     return info
 
 
+# Every run in the person's own Chrome opens its tabs in a new tab group. Chrome removes a group
+# when its last tab closes, so closing the tabs is what cleans the group up.
+CHROME_TABS_RULE = (
+    "TABS: this is the person's own Chrome. Open what you need in new tabs and never touch tabs\n"
+    "they already had open. Before you give your final answer, close every tab you opened with\n"
+    "tabs_close_mcp, so the tab group you worked in disappears with them. The only exception is\n"
+    "a tab these instructions tell you to leave open: leave that one and close all the others."
+)
+
+
 def run(
     prompt: str,
     run_id: str | None = None,
@@ -115,6 +125,8 @@ def run(
 
     if run_id:
         store.log(run_id, f"claude: starting ({len(prompt)} chars, browser={browser})")
+    if browser == "chrome-extension":
+        prompt = prompt.rstrip() + "\n\n" + CHROME_TABS_RULE
     try:
         proc = subprocess.run(
             cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",

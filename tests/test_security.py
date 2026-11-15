@@ -69,3 +69,22 @@ def test_background_claude_is_locked_down(tmp_home, monkeypatch):
     claude.run("x")
     cmd = seen["cmd"]
     assert cmd[cmd.index("--tools") + 1] == ""
+
+
+def test_chrome_runs_are_told_to_close_their_tabs(tmp_home, monkeypatch):
+    seen = {}
+
+    class P:
+        returncode, stdout, stderr = 0, '{"result": "ok", "total_cost_usd": 0}', ""
+
+    def fake(cmd, **k):
+        seen["input"] = k.get("input")
+        return P()
+
+    monkeypatch.setattr(claude.subprocess, "run", fake)
+    claude.run("find jobs", browser="chrome-extension")
+    assert "tabs_close_mcp" in seen["input"] and seen["input"].startswith("find jobs")
+    claude.run("find jobs", browser="playwright")
+    assert "tabs_close_mcp" not in seen["input"]
+    claude.run("find jobs")
+    assert seen["input"] == "find jobs"

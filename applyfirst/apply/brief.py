@@ -67,13 +67,17 @@ def _mode_rules(mode: str) -> str:
             "submit, wait for the confirmation page or message and copy its text into\n"
             "confirmation_text. Submitted is only true when you saw a confirmation on the page;\n"
             "if you clicked submit and saw none, report needs-you and say so. Close the tab you\n"
-            "opened once the application is submitted."
+            "opened once the application is submitted, and close it too if you report failed.\n"
+            "If you report needs-you, leave the form tab open where you stopped so the person can\n"
+            "finish it there."
         )
     return (
         "MODE: review. Fill every field and attach the files, then STOP. Do not click the final\n"
         "submit button (Submit, Submit Application, Send Application, or the last button of the\n"
         "form), and do not press Enter inside the form. Leave the tab open on the finished form\n"
-        "so the person can read it and press submit themselves, and report ready-to-submit."
+        "so the person can read it and press submit themselves, and report ready-to-submit.\n"
+        "If you report needs-you, leave the form tab open where you stopped. If you report failed,\n"
+        "close it."
     )
 
 
