@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from . import config, jobs, store
 
 PACKAGES = ["sources", "filters", "resume", "apply", "tracker"]
-WEB = Path(__file__).resolve().parent.parent / "web"
+WEB = Path(__file__).resolve().parent / "web"   # inside the package, so pip installs ship it
 
 app = FastAPI(title="applyfirst", docs_url="/api/docs")
 

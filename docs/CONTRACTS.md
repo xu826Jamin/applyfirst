@@ -121,7 +121,7 @@ Rules for every package:
 
 ## web: the interface
 
-`web/index.html`, `web/app.js`, `web/styles.css`, served at `/` and `/static/`. No build
+`applyfirst/web/index.html`, `app.js`, `styles.css`, served at `/` and `/static/`. No build
 step. Screens: Setup (resume import, profile, targets), Jobs (queue, approve/skip, why kept
 or skipped), Applications (status board, needs-you list, outcomes), Answers (learned and
 pending questions), Insights (stats), Settings (every setting, warnings shown inline),
