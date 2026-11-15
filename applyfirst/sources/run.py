@@ -261,6 +261,7 @@ def sweep(run_id: str) -> str:
     notes: list[str] = []
     new_rows: list[tuple[dict, str]] = []
     body_queue: list = []
+    new_total = 0
     boards_checked = 0
     failed_kinds: dict[str, int] = {}
 
@@ -276,26 +277,34 @@ def sweep(run_id: str) -> str:
         boards = boards_mod.load_all()
         ctx = Ctx(http=http, terms=search_terms(settings), countries=_wanted(settings))
         store.log(run_id, f"Reading {len(boards)} boards ({len(ctx.terms) or 'no'} search terms for Workday)")
+        # Boards go through in batches and each batch's new postings are written straight away.
+        # Holding every board's download until the end grew one sweep past 1.6 GB.
+        n = 0
+        batch_size = WORKERS * 4
         with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-            futures = [pool.submit(_read_board, b, ctx) for b in boards]
-            for n, fut in enumerate(as_completed(futures), 1):
-                board, result, err = fut.result()
-                boards_checked += 1
-                if err:
-                    failed_kinds[err.kind] = failed_kinds.get(err.kind, 0) + 1
-                    _record_state(con, board, now, err.kind, 0)
-                    store.log(run_id, f"Could not read {board['ats']}/{board['token']}: {err}")
-                else:
-                    if result.note:
-                        store.log(run_id, f"{board['ats']}/{board['token']}: {result.note}")
-                    _handle_board(con, board, result, now, settings, rep, new_rows, body_queue)
-                    _record_state(con, board, now, "ok", len(result.postings))
-                    rep["listed"] += len(result.postings)
-                if n % 100 == 0:
-                    con.commit()
-                if n % 500 == 0:
-                    store.log(run_id, f"{n} of {len(boards)} boards read, {len(new_rows)} new so far")
-        con.commit()
+            for start in range(0, len(boards), batch_size):
+                futures = [pool.submit(_read_board, b, ctx) for b in boards[start:start + batch_size]]
+                for fut in as_completed(futures):
+                    board, result, err = fut.result()
+                    n += 1
+                    boards_checked += 1
+                    if err:
+                        failed_kinds[err.kind] = failed_kinds.get(err.kind, 0) + 1
+                        _record_state(con, board, now, err.kind, 0)
+                        store.log(run_id, f"Could not read {board['ats']}/{board['token']}: {err}")
+                    else:
+                        if result.note:
+                            store.log(run_id, f"{board['ats']}/{board['token']}: {result.note}")
+                        _handle_board(con, board, result, now, settings, rep, new_rows, body_queue)
+                        _record_state(con, board, now, "ok", len(result.postings))
+                        rep["listed"] += len(result.postings)
+                    if n % 500 == 0:
+                        store.log(run_id, f"{n} of {len(boards)} boards read, {new_total + len(new_rows)} new so far")
+                del futures
+                new_total += len(new_rows)
+                _store_new(con, new_rows)
+                new_rows.clear()
+                con.commit()
     else:
         notes.append("Company boards are switched off in your settings.")
 
@@ -321,7 +330,7 @@ def sweep(run_id: str) -> str:
             store.log(run_id, f"{name}: {note}")
         agg_new += _store_aggregator(con, name, rows, now, settings, rep)
     con.commit()
-    total_new = len(new_rows) + agg_new
+    total_new = new_total + agg_new
 
     # postings that have no board to disappear from: look at the page
     _check_unboarded(con, http, now, rep)
