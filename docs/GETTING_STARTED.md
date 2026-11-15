@@ -96,7 +96,9 @@ anything later under **Profile** and **Settings**.
 1. **Resume.** Upload the resume you already have (a PDF). applyfirst reads out your experience.
 2. **Experience.** Check what it found and fix anything that is off. Only lines you confirm are
    ever used on an application, and every line on a resume it builds traces back to one of
-   them.
+   them. Later, **Settings, Resume versions** lets you choose how resumes are made: an ideal resume
+   for each role group you pick, adjusted to each job (the default); one built fresh for every job;
+   or your own file sent as-is. Each choice shows its pros and cons there.
 3. **Profile.** The basics every application asks for: your name, contact details, where you can
    work, when you can start, and so on. Anything you leave blank on the demographic questions is
    answered "prefer not to say" where a form offers it.

@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -250,9 +251,16 @@ def step_filter() -> list[dict]:
         full = call("GET", f"/api/filters/postings/{urllib.request.quote(p['id'], safe='')}")[1]
         place_ok = full.get("remote") or (full.get("country") in ("CA", "") and
                                           ("ontario" in (full.get("location", "") + " " + str(full.get("region", ""))).lower()
+                                           or re.search(r",\s*ON\b", full.get("location", ""))
                                            or any(c in full.get("location", "").lower() for c in
                                                   ["toronto", "ottawa", "waterloo", "kitchener", "mississauga", "markham",
                                                    "hamilton", "london", "oakville", "burlington", "vaughan", "guelph"])))
+        if not place_ok and not re.search(r",\s*(?:QC|BC|AB|MB|SK|NS|NB|NL|PE)\b", full.get("location", "") or ""):
+            # An unreadable location ("3 Locations", "Canada") is kept only when the posting's own
+            # text names Ontario; check that independently.
+            body = (full.get("title", "") + " " + (full.get("description") or "")).lower()
+            place_ok = bool(re.search(r"\b(ontario|toronto|ottawa|waterloo|kitchener|mississauga|markham|hamilton|"
+                                      r"oakville|burlington|vaughan|guelph|kingston|london, on)\b", body))
         if not place_ok:
             bad_place.append(f"{full.get('company')}: {full.get('location')}")
         if full.get("level") and full["level"] not in ("internship", "co-op", "new-grad"):
@@ -310,6 +318,43 @@ def step_resume() -> None:
     check("resume", "one-page PDF builds from the confirmed bank", is_pdf, f"{len(pdf) if is_pdf else code} bytes")
     code, files = call("GET", "/api/resume/files")
     check("resume", "resume files are listed", code == 200 and bool(files))
+
+
+def step_resume_modes(kept: list[dict], pdf: Path | None) -> None:
+    """All three Resume versions choices, against one real kept posting."""
+    section("Resume versions")
+    target = next((p for p in kept if p.get("field") == "software"), kept[0] if kept else None)
+    if not check("resume", "a kept posting to build for", target is not None):
+        return
+    pid = urllib.request.quote(target["id"], safe="")
+    s = call("GET", "/api/settings")[1]["settings"]
+
+    s["apply"]["resume_tailoring"], s["apply"]["resume_groups"] = "ideal", ["software", "data-ml"]
+    call("PUT", "/api/settings", s)
+    t = time.time()
+    code, r = call("GET", f"/api/resume/for-posting/{pid}", timeout=600)
+    check("resume", "ideal: the posting gets its role group's resume, leaned to the job",
+          code == 200 and r.get("role_type") in ("software", "data-ml") and target["company"].split()[0][:4].lower() in r.get("name", "").lower(),
+          f"{r.get('name') if code == 200 else r} in {time.time() - t:.0f} s")
+    check("resume", "ideal: Claude's outline for the group steered the pick",
+          code == 200 and len(r.get("ideal_terms") or []) > 0, f"{len(r.get('ideal_terms') or [])} of the person's own terms")
+    code, again = call("GET", f"/api/resume/for-posting/{pid}")
+    check("resume", "ideal: asking again reuses the same file", code == 200 and again.get("name") == r.get("name"))
+
+    s["apply"]["resume_tailoring"] = "per-job"
+    call("PUT", "/api/settings", s)
+    code, r2 = call("GET", f"/api/resume/for-posting/{pid}", timeout=600)
+    check("resume", "per-job: a fresh pick for the posting", code == 200 and not r2.get("ideal_terms"), r2.get("name", r2))
+
+    s["apply"]["resume_tailoring"] = "as-is"
+    call("PUT", "/api/settings", s)
+    code, r3 = call("GET", f"/api/resume/for-posting/{pid}")
+    same = code == 200 and pdf is not None and r3.get("size") == pdf.stat().st_size
+    check("resume", "as-is: the uploaded PDF goes out untouched as First_Last_Resume.pdf",
+          same and r3.get("name") == "Alex_Rivera_Resume.pdf", str(r3)[:160])
+
+    s["apply"]["resume_tailoring"], s["apply"]["resume_groups"] = "ideal", []
+    call("PUT", "/api/settings", s)
 
 
 def step_apply(kept: list[dict]) -> dict | None:
@@ -450,6 +495,7 @@ def main() -> int:
         kept = guarded("filter", step_filter, default=[]) or []
         guarded("order", step_order, kept)
         guarded("resume", step_resume)
+        guarded("resume versions", step_resume_modes, kept, pdf)
         app = guarded("apply", step_apply, kept) if args.apply and kept else None
         if not args.apply:
             print("\n== Apply skipped (run with --apply to fill one real form in review mode)")

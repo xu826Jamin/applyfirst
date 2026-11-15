@@ -308,11 +308,14 @@ def test_profile_education_fills_in_when_the_bank_has_none(alex):
 def test_resume_for_follows_tailoring_setting_and_rebuilds_stale_files(seeded):
     s = config.load_settings()
     s["search"]["fields"] = ["software", "hardware"]
-    s["apply"]["resume_tailoring"] = "by-role-type"
+    s["apply"]["resume_tailoring"] = "ideal"
     posting = {"id": "p1", "company": "Acme", "title": "Dev", "field": "hardware", "description": "C++"}
     hw = resume.resume_for(posting, s)
-    assert Path(hw).parent.name == "hardware"
-    assert Path(resume.resume_for({**posting, "field": "software"}, s)).parent.name == "software"
+    # the hardware group's resume, leaned toward this posting, named for the employer
+    assert "Acme_Dev" in Path(hw).name
+    assert json.loads(Path(hw).with_suffix(".json").read_text(encoding="utf-8"))["role_type"] == "hardware"
+    sw = resume.resume_for({**posting, "company": "Beta", "field": "software"}, s)
+    assert json.loads(Path(sw).with_suffix(".json").read_text(encoding="utf-8"))["role_type"] == "software"
     first_mtime = Path(hw).stat().st_mtime_ns
     assert resume.resume_for(posting, s) == hw and Path(hw).stat().st_mtime_ns == first_mtime   # reused
 
@@ -328,7 +331,7 @@ def test_resume_for_follows_tailoring_setting_and_rebuilds_stale_files(seeded):
     assert not any(f["stale"] for f in files.values())
     bank.update(seeded["intern"] + ".b1", {"text": "Built a REST API in Python that cut report time by 85 percent"})
     assert all(f["stale"] for f in resume.list_files())
-    s["apply"]["resume_tailoring"] = "by-role-type"
+    s["apply"]["resume_tailoring"] = "ideal"
     hw2 = resume.resume_for(posting, s)
     assert hw2 == hw and Path(hw).stat().st_mtime_ns != first_mtime
     assert "85 percent" in render.pdf_text(hw) and resume.verify(hw) == []

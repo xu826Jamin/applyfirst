@@ -109,7 +109,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "apply": {
         "mode": "review",              # review (approve each one) | auto (submit without asking)
         "review_first": 5,             # in auto mode, still review the first N
-        "resume_tailoring": "by-role-type",   # one | by-role-type | per-job
+        "resume_tailoring": "ideal",   # ideal (per role group, leaned to each job) | per-job | as-is (your own file)
+        "resume_groups": [],           # role groups that get an ideal resume; empty = your search fields
         "cover_letters": "when-required",     # never | when-required | always
         "future_commitments": "yes",   # yes | literal  (relocation, start date, term, travel)
         "verify_resume_lines": True,   # every resume line must trace to the experience bank

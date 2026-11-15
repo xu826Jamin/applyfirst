@@ -30,8 +30,10 @@ the applications you send to employers and the work Claude does for you.
   Every skipped posting tells you why.
 - **Your order.** Newest first, soonest deadline, company, or best match: you choose.
 - **Resumes from your real experience.** Upload the resume you have. applyfirst turns it into an
-  experience bank you confirm once, then builds a clean one-page resume per type of role. Every
-  line traces back to something you confirmed, so nothing on it surprises you in an interview.
+  experience bank you confirm once. Then pick how resumes are made: an ideal resume for each role
+  group you choose, adjusted to each job (the default); one built fresh for every job; or your own
+  file sent exactly as you made it. Settings explains the trade-offs. Every generated line traces
+  back to something you confirmed, so nothing on it surprises you in an interview.
 - **Applications filled for you.** Claude fills the form in your browser, including Workday.
   Review mode stops before submit so you can check it; auto mode submits and saves the confirmation.
 - **Answer once.** Every new form question is asked once and remembered for every application after.

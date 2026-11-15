@@ -12,8 +12,9 @@ First public release, under the GNU Affero General Public License v3.0 or later.
 - **Only what you want.** Filter by location, remote, career level, field, start term, term
   length, keywords, companies to skip and languages. Every skipped posting says why.
 - **Your order.** Newest first, soonest deadline, company, or best match.
-- **Resumes from your real experience.** Import your resume, confirm your experience once, and
-  build a one-page resume per type of role. Every line traces back to something you confirmed.
+- **Resumes from your real experience.** Import your resume, confirm your experience once, then
+  choose: an ideal resume per role group adjusted to each job, one built fresh per job, or your own
+  file as-is. Every generated line traces back to something you confirmed.
 - **Applications filled for you.** Claude fills and submits applications in your own Chrome,
   including Workday. Review mode stops before the final button; auto mode submits and saves the
   confirmation.

@@ -1,7 +1,28 @@
 """Shared fixtures. Every test runs against a fresh data home; nothing touches ~/.applyfirst."""
 import pytest
 
-from applyfirst import config, store
+from applyfirst import claude, config, store
+
+
+@pytest.fixture(autouse=True)
+def no_real_claude(monkeypatch):
+    """A test never reaches the real Claude Code, even on a machine that has it installed.
+    A test that needs Claude fakes claude.run, or the process start underneath it."""
+    import os
+    import subprocess
+    real_run = subprocess.run
+    claude_exe = os.path.basename(str(claude.shutil.which("claude") or "claude")).lower()
+
+    def guarded(cmd, *a, **k):
+        first = cmd[0] if isinstance(cmd, (list, tuple)) and cmd else str(cmd).split(" ")[0]
+        name = os.path.basename(str(first)).lower()
+        version_only = isinstance(cmd, (list, tuple)) and "--version" in cmd
+        if name in (claude_exe, "claude", "claude.cmd", "claude.exe") and not version_only:
+            raise AssertionError("a test tried to start the real Claude Code; fake claude.run or subprocess.run")
+        return real_run(cmd, *a, **k)
+
+    monkeypatch.setattr(claude, "available", lambda: False)
+    monkeypatch.setattr(subprocess, "run", guarded)
 
 ALEX = {
     "name": {"first": "Alex", "last": "Rivera", "preferred": ""},

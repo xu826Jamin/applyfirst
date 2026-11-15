@@ -433,3 +433,4 @@ main:focus { outline: none; }
 @media (max-width: 760px) {
   .nav .nav-primary { flex: 1; }
 }
+.setting .option-note { margin-top: 6px; max-width: 46ch; line-height: 1.45; }

@@ -68,9 +68,12 @@ export async function settingsScreen(page) {
       const inline = def.type === "toggle";
       const warnText = S.warnings[path];
       const warn = warnText ? h("div", { class: "warn-line" }, notice(warnText)) : null;
+      // A select whose choices need explaining shows the chosen one's pros and cons under it.
+      const note = def.notes ? h("div", { class: "help option-note" }, def.notes[deepGet(settings, path)] || "") : null;
+      const onAfter = note ? (p, v) => { note.textContent = def.notes[v] || ""; changed(); } : changed;
       const el = h("div", { class: "setting" + (inline ? " inline" : "") + (wide ? " wide" : ""), "data-setting": path },
-        h("div", null, h("div", { class: "lab" }, def.label), def.help ? h("div", { class: "help" }, def.help) : null),
-        h("div", { class: "ctl" }, settingControl(path, def, settings, changed)),
+        h("div", null, h("div", { class: "lab" }, def.label), def.help ? h("div", { class: "help" }, def.help) : null, note),
+        h("div", { class: "ctl" }, settingControl(path, def, settings, onAfter)),
         warn,
       );
       rows.push({ el, def, path, warn });

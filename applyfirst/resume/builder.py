@@ -102,7 +102,10 @@ def is_stale(path: Path) -> bool:
         return True
     profile = config.load_profile()
     posting = meta.get("posting") if meta.get("posting") else None
-    return meta.get("fingerprint") != _fingerprint(profile, meta.get("role_type"), posting)
+    fp = _fingerprint(profile, meta.get("role_type"), posting)
+    if meta.get("ideal") is not None:
+        fp += "|ideal:" + ",".join(meta["ideal"])
+    return meta.get("fingerprint") != fp
 
 
 # --------------------------------------------------------------------------- building
@@ -118,7 +121,9 @@ def _education_first(profile: dict, entries: list[dict]) -> bool:
 
 
 def build_detailed(role_type: str | None = None, posting: dict | None = None,
-                   reuse: bool = False) -> BuildResult:
+                   reuse: bool = False, use_ideal: bool = False) -> BuildResult:
+    """use_ideal: pick lines for role_type against that group's ideal resume (resume/ideal.py),
+    then, with a posting, lean the same selection toward the posting's own terms."""
     profile = config.load_profile()
     if not render.full_name(profile):
         raise ValueError("Add your name in Setup first; it heads the resume and names the file.")
@@ -127,7 +132,11 @@ def build_detailed(role_type: str | None = None, posting: dict | None = None,
         raise BankEmpty(EMPTY_MSG)
     settings = config.load_settings()
     verify_on = bool(config.get(settings, "apply.verify_resume_lines", True))
-    fp = _fingerprint(profile, role_type, posting)
+    ideal_terms: set[str] = set()
+    if use_ideal and role_type:
+        from . import ideal
+        ideal_terms = ideal.wanted(role_type, entries)
+    fp = _fingerprint(profile, role_type, posting) + ("|ideal:" + ",".join(sorted(ideal_terms)) if use_ideal else "")
     pdf_target = target_path(profile, role_type, posting, "pdf")
     html_target = pdf_target.with_suffix(".html")
 
@@ -143,7 +152,10 @@ def build_detailed(role_type: str | None = None, posting: dict | None = None,
     # What the posting (or role type) asks for, from the bank's own vocabulary only.
     role = role_type or ((posting or {}).get("field") or None)
     wanted = tailor.wanted_terms(posting, entries) if posting else set()
-    if role and not wanted:
+    if use_ideal and role:
+        # The group's ideal sets the base; the posting's own terms lean it (a light adjustment).
+        wanted = (ideal_terms or tailor.role_wanted_terms(entries, role)) | wanted
+    elif role and not wanted:
         wanted = tailor.role_wanted_terms(entries, role)
     chosen, log = tailor.select(entries, wanted, role)
     if not any(e["section"] == "education" for e in chosen):
@@ -215,6 +227,7 @@ def build_detailed(role_type: str | None = None, posting: dict | None = None,
             "built_at": store.now(), "problems": res.problems, "ats_problems": res.ats_problems,
             "duplicates": res.duplicates, "trims": trims, "unused": res.unused, "note": note,
             "verified": verify_on, "selection": log,
+            "ideal": sorted(ideal_terms) if use_ideal else None,
             "chosen": {p["id"]: [b["id"] for b in p["selected"]] for p in chosen},
             "posting": ({"title": posting.get("title", ""), "description": posting.get("description", ""),
                          "field": posting.get("field", ""), "company": posting.get("company", "")}
@@ -241,31 +254,65 @@ def verify(pdf_path: str) -> list[str]:
 
 
 def role_for(posting: dict | None, settings: dict) -> str | None:
-    fields = list(config.get(settings, "search.fields", []) or [])
+    fields = list(config.get(settings, "apply.resume_groups", []) or []) or list(config.get(settings, "search.fields", []) or [])
     field_ = (posting or {}).get("field") or ""
     if field_ and (not fields or field_ in fields):
         return field_
     return fields[0] if fields else (field_ or None)
 
 
+class NoOwnResume(FileNotFoundError):
+    pass
+
+
+def own_resume(posting: dict | None, settings: dict) -> str:
+    """The person's own file, sent exactly as they made it (apply.resume_tailoring = as-is).
+
+    resumes/own/<field>.pdf is used for postings in that field (software, hardware...), then
+    resumes/own/default.pdf, then the most recently imported resume. The copy that goes to the
+    employer is named First_Last_Resume.pdf, since employers see the file name."""
+    root = resumes_dir()
+    own = root / "own"
+    field_ = role_for(posting, settings)
+    candidates = ([own / f"{field_}.pdf"] if field_ else []) + [own / "default.pdf"]
+    src = next((p for p in candidates if p.is_file()), None)
+    if src is None:
+        imports = sorted((root / "imports").glob("*.pdf"), key=lambda p: p.stat().st_mtime)
+        src = imports[-1] if imports else None
+    if src is None:
+        raise NoOwnResume("Upload your resume first (Resume page), or switch Resume versions away from as-is.")
+    name = config.load_profile().get("name") or {}
+    stem = "_".join(re.sub(r"[^A-Za-z0-9]+", "", n) for n in (name.get("first"), name.get("last")) if n) or "My"
+    out = root / "send" / (src.stem if src.parent == own else "latest")
+    out.mkdir(parents=True, exist_ok=True)
+    dest = out / f"{stem}_Resume.pdf"
+    if not dest.exists() or dest.stat().st_mtime < src.stat().st_mtime or dest.stat().st_size != src.stat().st_size:
+        shutil.copy2(src, dest)
+    return str(dest)
+
+
 def resume_for(posting: dict, settings: dict) -> str:
     """The resume to attach to a posting, following apply.resume_tailoring:
-    one (a single resume), by-role-type (one per field), per-job (selection per posting)."""
-    mode = config.get(settings, "apply.resume_tailoring", "by-role-type")
+    ideal (ideal per role group, leaned toward each job; the default), per-job (a fresh pick per
+    posting), as-is (the person's own file, untouched). Older settings: one; by-role-type now means ideal."""
+    mode = config.get(settings, "apply.resume_tailoring", "ideal")
+    if mode == "as-is":
+        return own_resume(posting, settings)
     if mode == "per-job":
         return build_detailed(None, posting, reuse=True).path
     if mode == "one":
         return build_detailed(None, None, reuse=True).path
-    return build_detailed(role_for(posting, settings), None, reuse=True).path
+    return build_detailed(role_for(posting, settings), posting, reuse=True, use_ideal=True).path
 
 
 def build_all(settings: dict | None = None) -> list[BuildResult]:
     """One resume per field in settings.search.fields (by-role-type), or the single resume."""
     settings = settings or config.load_settings()
-    if config.get(settings, "apply.resume_tailoring", "by-role-type") != "by-role-type":
-        return [build_detailed(None, None, reuse=True)]
-    fields = config.get(settings, "search.fields", []) or []
-    return [build_detailed(f, None, reuse=True) for f in fields] or [build_detailed(None, None, reuse=True)]
+    mode = config.get(settings, "apply.resume_tailoring", "ideal")
+    if mode in ("ideal", "by-role-type"):
+        from . import ideal
+        return [build_detailed(g, None, reuse=True, use_ideal=True) for g in ideal.groups(settings)]
+    return [build_detailed(None, None, reuse=True)]
 
 
 def list_files() -> list[dict]:

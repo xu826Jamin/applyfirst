@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
+from .. import config, store
 from . import bank, builder, parse
 
 router = APIRouter()
@@ -76,13 +77,32 @@ def delete_experience(row_id: str) -> dict:
 
 @router.get("/preview")
 def preview(role_type: str | None = None) -> FileResponse:
+    mode = config.get(config.load_settings(), "apply.resume_tailoring", "ideal")
     try:
-        res = builder.build_detailed(role_type or None, None, reuse=True)
+        res = builder.build_detailed(role_type or None, None, reuse=True,
+                                     use_ideal=bool(role_type) and mode in ("ideal", "by-role-type"))
     except ValueError as e:                  # BankEmpty is a ValueError
         raise HTTPException(409, str(e))
     media = "application/pdf" if res.kind == "pdf" else "text/html"
     headers = {"X-Resume-Note": res.note} if res.note else {}
     return FileResponse(res.path, media_type=media, headers=headers)
+
+
+@router.get("/for-posting/{posting_id:path}")
+def for_posting(posting_id: str) -> dict:
+    """Which resume this posting would get under the current Resume versions setting."""
+    posting = store.one("SELECT * FROM postings WHERE id=?", (posting_id,))
+    if not posting:
+        raise HTTPException(404, "No such posting.")
+    settings = config.load_settings()
+    try:
+        path = builder.resume_for(posting, settings)
+    except (ValueError, FileNotFoundError) as e:   # BankEmpty, NoOwnResume
+        raise HTTPException(409, str(e))
+    meta = builder.read_meta(Path(path))
+    return {"name": Path(path).name, "mode": config.get(settings, "apply.resume_tailoring", "ideal"),
+            "role_type": meta.get("role_type"), "ideal_terms": meta.get("ideal") or [],
+            "size": Path(path).stat().st_size}
 
 
 @router.get("/files")
