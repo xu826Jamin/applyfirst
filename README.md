@@ -14,9 +14,10 @@ the applications you send to employers and the work Claude does for you.
 
 ![Settings: every choice in plain words, saved straight away](docs/images/settings.png)
 
-> **Want it with no install?** applyfirst hosted keeps applying while your laptop is off, with
-> nothing to set up. [Join the waitlist](https://forms.gle/MVQg9XdZPRxgSjXS7) and you will be
-> first in when it opens.
+> **Want the new postings without running anything?** applyfirst alerts sends you the jobs that
+> fit you the hour they go up, with no install. Want it to apply for you too? That comes as an
+> add-on. [Join the waitlist](https://forms.gle/MVQg9XdZPRxgSjXS7) and you're first in when it
+> opens.
 
 ## What you get
 
