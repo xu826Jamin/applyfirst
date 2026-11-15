@@ -87,6 +87,7 @@ def section(title: str) -> None:
 # --------------------------------------------------------------------------- http
 
 BASE = ""
+APPLY_RAN = False      # set when --apply is given; checks that need its application read this
 
 
 def call(method: str, path: str, body=None, raw: bool = False, timeout: int = 600, files=None):
@@ -410,7 +411,10 @@ def step_replies(app: dict | None) -> None:
         apps = call("GET", "/api/apply/applications")[1]
         app = apps[0] if apps else None
     if app is None:
-        check("replies", "manual outcome", False, "no application to mark")
+        if APPLY_RAN:
+            check("replies", "manual outcome", False, "no application to mark")
+        else:
+            print("     (manual outcome skipped: it needs the --apply step's application)")
         return
     code, _ = call("POST", f"/api/tracker/applications/{app['id']}/outcome", {"outcome": "interview"})
     check("replies", "manual outcome saves", code == 200)
@@ -451,7 +455,7 @@ def step_cli(env: dict) -> None:
 
 
 def main() -> int:
-    global BASE
+    global BASE, APPLY_RAN
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="fill one real form in review mode")
     ap.add_argument("--discover", action="store_true", help="run full board discovery on the first sweep")
@@ -496,6 +500,7 @@ def main() -> int:
         guarded("order", step_order, kept)
         guarded("resume", step_resume)
         guarded("resume versions", step_resume_modes, kept, pdf)
+        APPLY_RAN = bool(args.apply)
         app = guarded("apply", step_apply, kept) if args.apply and kept else None
         if not args.apply:
             print("\n== Apply skipped (run with --apply to fill one real form in review mode)")
