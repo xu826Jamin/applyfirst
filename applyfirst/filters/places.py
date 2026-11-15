@@ -1,7 +1,7 @@
 """Where a posting is, and whether that fits the user's countries, regions, cities and
 remote setting.
 
-Calibration rules carried over from the private pipeline (hazards 5, 26, 28, 32):
+Calibration rules carried over from an earlier version (hazards 5, 26, 28, 32):
   * Place names collide: Vancouver WA, London UK, Hamilton OH, Ontario CA. A state or province
     code or a country written in the same segment settles it first; a bare city table is only
     a fallback, and names that mean two places are left out of it.

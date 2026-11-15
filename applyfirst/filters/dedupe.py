@@ -1,6 +1,6 @@
 """Have I already applied to this? Same employer, same role words, same place.
 
-Ported from the private pipeline's duplicate check: legal suffixes drop off a company name, the
+Ported from an earlier version's duplicate check: legal suffixes drop off a company name, the
 words that identify a role are what is left once terms, ids and levels go, two terms of one role
 are two postings, and a different city is a different requisition.
 """

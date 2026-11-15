@@ -1,6 +1,6 @@
 """Which field a posting is in: a keyword classifier per field.
 
-The software and hardware sets are the private pipeline's TECH_RE (the whole computer
+The software and hardware sets are an earlier version's TECH_RE (the whole computer
 engineering title space: FPGA, ASIC, RTL, DSP, controls, DevOps, photonics, French words),
 the other fields are reasonable sets in the same style. A posting can sit in several fields
 ("Machine Learning Software Engineer" is software and data-ml).

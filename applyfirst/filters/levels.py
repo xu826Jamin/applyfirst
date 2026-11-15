@@ -1,6 +1,6 @@
 """Career level: internship, co-op, new-grad, entry, mid, senior.
 
-Ported from the private pipeline's submit_gate (level words, the 'a student marker in the
+Ported from an earlier version's submit_gate (level words, the 'a student marker in the
 title always wins' rule, the guarded senior-word reader), score_jobs (INTERN_RE including
 'fellow', years-of-experience penalty with its student-posting suppression) and
 source_jobs (analyst cohort programs).

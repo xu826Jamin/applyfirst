@@ -1,6 +1,6 @@
 """Order postings: newest, deadline, company, or a rough match with the user's experience.
 
-Ordering rules ported from the private pipeline's queue order: a deadline still ahead sorts
+Ordering rules ported from an earlier version's queue order: a deadline still ahead sorts
 soonest first, no deadline and a deadline already past sort after, and a past date is never
 "soonest". Ties fall to company, title and id so the same data always gives the same order.
 

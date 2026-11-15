@@ -1,6 +1,6 @@
 """What a posting says about timing, length, language, eligibility and who may apply.
 
-Ported from the private pipeline's score_jobs.py (term_months, extract_deadline with its
+Ported from an earlier version's score_jobs.py (term_months, extract_deadline with its
 start/end/open/assessment-date guard, french_flag generalized to any language,
 SCHOOL_RESTRICTION_RE) and submit_gate.py (closed text, US-citizen phrases).
 
