@@ -140,6 +140,10 @@ same rules:
 - **Say the limit plainly when it saves the reader time.** Nothing false is ever said.
 - Reasons and summaries shown to users are plain sentences, not log lines or code names.
 
+## Licence of contributions
+
+applyfirst is licensed under the AGPL v3.0 or later. By sending a pull request you agree that your contribution is licensed under those same terms, and that the maintainer may also license it under other terms, for example for a hosted version of applyfirst.
+
 ## Sending a change
 
 1. Fork the repo and make your change on a branch.

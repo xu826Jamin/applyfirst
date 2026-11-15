@@ -2,7 +2,7 @@
 
 ## 0.1.0 (2026-11-15)
 
-First public release.
+First public release, under the GNU Affero General Public License v3.0 or later.
 
 - **Fresh postings first.** Thousands of company career boards (Greenhouse, Lever, Ashby, Workday,
   SmartRecruiters, Workable and more) checked directly. The first search reads the built-in boards

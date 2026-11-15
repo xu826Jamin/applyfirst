@@ -166,5 +166,7 @@ pytest
 
 ## License
 
-MIT. The public list of company boards that discovery starts from is downloaded at run time from
+Copyright (C) 2026 Jamin Xu. Free software under the [GNU Affero General Public License v3.0](LICENSE) or later: use it, change it and share it. If you run a changed version as a service for other people, you must offer them your changed source code.
+
+The public list of company boards that discovery starts from is downloaded at run time from
 [an open internship list](https://github.com/zshah101/Automated-List-Of-Summer-2027-and-Fall-2026-Tech-Internships).
