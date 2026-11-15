@@ -35,9 +35,13 @@ the applications you send to employers and the work Claude does for you.
 
 ## Install
 
-You need Python 3.10 or newer and [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-signed in. For filling forms, either the Claude in Chrome extension or Node.js (for the Playwright
-browser).
+You need:
+
+- Python 3.10 or newer
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code), signed in
+- Google Chrome with the Claude in Chrome extension connected to Claude Code. Applications are
+  filled in your own Chrome, so the sites you are already signed in to just work, and in review
+  mode the filled form stays open for you to check and submit.
 
 ```
 pip install git+https://github.com/xu826Jamin/applyfirst
@@ -47,6 +51,23 @@ applyfirst
 `applyfirst` opens the app in your browser at http://127.0.0.1:8765. The setup takes about ten
 minutes: upload your resume, confirm your experience, say what you are looking for, press
 **Find jobs**.
+
+## Applying
+
+1. **Jobs** lists the postings that fit, newest first, each with why it was kept. Approve the
+   ones you want, then press **Apply to approved**.
+2. Claude opens each application in your Chrome, attaches your resume and fills every field it
+   can from your profile and saved answers.
+3. In review mode it stops before the final button. Check the tab, press submit yourself, then
+   mark it **I submitted it** under **Applications** (with email connected, the confirmation
+   email marks it for you).
+4. Anything it could not do waits under **Needs you**: a sign-in, a CAPTCHA, or a question it has
+   no answer for. Answer a question once under **Answers** and it is used everywhere after.
+5. Connect your email in Settings and replies are matched to applications automatically.
+   **Insights** then shows what is getting you interviews.
+
+The first search reads the built-in boards in about ten minutes, then grows to thousands of boards in
+the background; later searches only pick up what is new.
 
 ## Run it every day
 

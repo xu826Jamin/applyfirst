@@ -22,7 +22,7 @@ HEADINGS = {
 CSS = """
   @page { size: Letter; margin: 0.5in 0.6in; }
   * { box-sizing: border-box; }
-  body { font-family: "Calibri","Carlito","Helvetica Neue",Arial,"Liberation Sans",sans-serif;
+  body { font-family: "Calibri","Carlito",Arial,"Liberation Sans","Helvetica Neue",sans-serif;
          font-size: 10pt; line-height: 1.22; color:#000; margin:0;
          font-variant-ligatures: none; -webkit-print-color-adjust: exact; }
   h1 { font-size: 19pt; letter-spacing:.02em; margin:0 0 2pt 0; font-weight:700; }
