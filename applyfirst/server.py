@@ -118,6 +118,7 @@ def status() -> dict:
         "running": jobs.running(),
         "claude": _claude_info(),
         "chrome": _chrome_info(),
+        "own_window": _own_window_info(),
         "spent_today_usd": round(_spent_today(), 2),
         "last_runs": store.rows("SELECT * FROM runs ORDER BY started_at DESC LIMIT 10"),
     }
@@ -129,14 +130,24 @@ def _claude_info() -> dict:
 
 
 def _chrome_info() -> dict | None:
-    # Only the Claude in Chrome route needs Chrome; the Playwright route brings its own browser.
+    # Only the Claude in Chrome route needs Chrome and its extension; the applyfirst window does not.
     from . import claude
-    if config.get(config.load_settings(), "apply.browser", "chrome-extension") != "chrome-extension":
-        return None
     try:
-        return claude.chrome_info()
+        info = claude.chrome_info()
     except OSError:
         return None
+    setting = config.get(config.load_settings(), "apply.browser", "auto")
+    return info if claude.resolve_browser(setting, info) == claude.ROUTE_EXTENSION else None
+
+
+def _own_window_info() -> dict | None:
+    # What the applyfirst Chrome window route needs: Node.js (to reach it) and a Chrome, Edge or Chromium.
+    from . import claude, own_window
+    from .resume import render
+    setting = config.get(config.load_settings(), "apply.browser", "auto")
+    if claude.resolve_browser(setting) != claude.ROUTE_OWN_WINDOW:
+        return None
+    return {"node": own_window.node_ok(), "browser": bool(render.find_browser())}
 
 
 def _spent_today() -> float:

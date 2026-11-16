@@ -73,8 +73,13 @@ def _email_code_rule(tool: bool) -> str:
         "  in Settings and applyfirst enters these codes itself.'\n")
 
 
+def _own_window(browser: str) -> bool:
+    """The applyfirst window runs on Playwright MCP; "playwright" is its old name."""
+    return browser in ("own-window", "playwright")
+
+
 def _js_tool(browser: str) -> str:
-    return "browser_evaluate" if browser == "playwright" else "javascript_tool"
+    return "browser_evaluate" if _own_window(browser) else "javascript_tool"
 
 
 def _mode_rules(mode: str) -> str:
@@ -100,11 +105,17 @@ def _mode_rules(mode: str) -> str:
 
 def _workday_section(workday_answers: dict, browser: str) -> str:
     tool = _js_tool(browser)
+    if _own_window(browser):
+        how = (f"2. On each step of the application make ONE {tool} call whose function is\n"
+               "   `async () => { <the whole file content>; return await wdFill(ANSWERS); }`\n"
+               "   where ANSWERS is this object:\n")
+    else:
+        how = (f"2. On each step of the application make ONE {tool} call: the whole file content, then\n"
+               "   `; await wdFill(ANSWERS)` where ANSWERS is this object:\n")
     return (
         "WORKDAY: this form runs on Workday. Do not fill it click by click.\n"
         f"1. Read the script at {WORKDAY_JS} (read it with an explicit line limit).\n"
-        f"2. On each step of the application make ONE {tool} call: the whole file content, then\n"
-        "   `; await wdFill(ANSWERS)` where ANSWERS is this object:\n"
+        + how +
         f"{json.dumps(workday_answers, indent=2, ensure_ascii=False)}\n"
         "3. The call returns {filled, unmatched, consent, errors}. Fix every required\n"
         "   `unmatched` field and every `errors` entry by hand (use the standard answers, learned\n"

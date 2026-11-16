@@ -257,13 +257,13 @@ def _apply_one(posting: dict, existing_id: int | None, run_id: str, settings: di
 
         standard = standard_answers(profile, settings, posting)
         workday = workday_answers(standard, posting) if is_workday(posting) else None
-        browser = config.get(settings, "apply.browser", "chrome-extension")
-        code_tool = mode == "auto" and browser == "chrome-extension" and email_code.is_available()
+        browser = claude.resolve_browser(config.get(settings, "apply.browser", "auto"))
+        code_tool = mode == "auto" and email_code.is_available()   # an MCP tool: works on either route
         brief = build_brief(
             posting, mode=mode, resume_path=resume_path, cover_letter_path=cover,
             cover_letters_setting=config.get(settings, "apply.cover_letters", "when-required"),
             standard=standard, learned=learned_answers(), experience=_confirmed_experience(),
-            settings_apply=settings.get("apply", {}), browser=config.get(settings, "apply.browser", "chrome-extension"),
+            settings_apply=settings.get("apply", {}), browser=browser,
             workday=workday,
             form_notes=lessons.brief_section(lessons.form_system(posting)),
             email_code_tool=code_tool,
@@ -275,7 +275,7 @@ def _apply_one(posting: dict, existing_id: int | None, run_id: str, settings: di
 
     res = claude.run(
         brief, run_id,
-        browser=config.get(settings, "apply.browser", "chrome-extension"),
+        browser=browser,
         json_schema=RESULT_SCHEMA,
         max_turns=config.get(settings, "claude.max_turns_per_application", 60),
         upload_files=[resume_path] + ([cover] if cover else []),

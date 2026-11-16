@@ -3,7 +3,7 @@ import types
 
 import pytest
 
-from applyfirst import config, store
+from applyfirst import claude, config, store
 from applyfirst.apply import apply_queue, learn
 from test_apply_support import add_posting, fakes, result, set_settings  # noqa: F401
 
@@ -17,7 +17,8 @@ def app(pid):
     return store.one("SELECT * FROM applications WHERE posting_id=? ORDER BY id DESC", (pid,))
 
 
-def test_review_mode_stops_before_submit(fakes):
+def test_review_mode_stops_before_submit(fakes, monkeypatch):
+    monkeypatch.setattr(claude, "chrome_info", lambda: {"chrome": True, "extension": True, "connected": True})
     add_posting("g:1")
     approve("g:1")
     fakes.results = [result("ready-to-submit", cost=0.4)]
@@ -32,6 +33,16 @@ def test_review_mode_stops_before_submit(fakes):
     assert call["max_turns"] == 60
     assert "MODE: review" in call["prompt"]
     assert "1 ready for you to review" in summary and "$0.40" in summary
+
+
+def test_without_the_extension_applications_use_the_applyfirst_window(fakes, monkeypatch):
+    monkeypatch.setattr(claude, "chrome_info", lambda: {"chrome": True, "extension": False, "connected": False})
+    add_posting("g:1")
+    approve("g:1")
+    fakes.results = [result("ready-to-submit")]
+    apply_queue("r1")
+    call = fakes.calls[0]
+    assert call["browser"] == "own-window"
 
 
 def test_auto_mode_submits_and_stores_confirmation(fakes):

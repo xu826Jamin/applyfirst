@@ -231,7 +231,7 @@ def collect(name: str, settings: dict, run_id: str) -> tuple[list[dict], str]:
     if not claude.available():
         return [], "Claude Code is not installed, so this source was skipped."
     prompt = build_prompt(name, settings)
-    res = claude.run(prompt, run_id, browser=(settings.get("apply") or {}).get("browser") or "chrome-extension",
+    res = claude.run(prompt, run_id, browser=claude.resolve_browser((settings.get("apply") or {}).get("browser") or "auto"),
                      json_schema=ROWS_SCHEMA, max_turns=80)
     if not res.ok and not res.structured:
         return [], res.error or "The browser run did not finish."
