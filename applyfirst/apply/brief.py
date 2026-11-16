@@ -57,6 +57,22 @@ def is_workday(posting: dict) -> bool:
         or "myworkdaysite.com" in url
 
 
+def _email_code_rule(tool: bool) -> str:
+    """What to do when, after Submit, the form asks for a code emailed to the person."""
+    head = ("- A security code EMAILED to the person to finish this application (the form asks for\n"
+            "  it after Submit) is not a CAPTCHA. ")
+    if tool:
+        return head + (
+            "Call wait_for_email_code, type the code it returns into the\n"
+            "  code box, and submit again. If it returns no code, leave the tab on the code box and\n"
+            "  report needs-you with the reason 'Enter the code emailed to you in the open tab, then\n"
+            "  submit.' Never use it for a sign-in or account code.\n")
+    return head + (
+        "Leave the tab on the code box and report needs-you with the\n"
+        "  reason 'Enter the code emailed to you in the open tab, then submit. Connect your email\n"
+        "  in Settings and applyfirst enters these codes itself.'\n")
+
+
 def _js_tool(browser: str) -> str:
     return "browser_evaluate" if browser == "playwright" else "javascript_tool"
 
@@ -117,6 +133,7 @@ def build_brief(
     browser: str,
     workday: dict | None = None,
     form_notes: str = "",
+    email_code_tool: bool = False,
 ) -> str:
     desc = (posting.get("description") or "").strip()
     apply_url = posting.get("apply_url") or posting.get("url") or ""
@@ -204,6 +221,7 @@ def build_brief(
         "  create one, stop. Do not create accounts, type passwords or use reset flows. Report\n"
         "  needs-you with the reason, for example 'sign-in needed: <site>'.\n"
         "- CAPTCHAs and bot checks: stop and report needs-you, for example 'CAPTCHA on <site>'.\n"
+        + (_email_code_rule(email_code_tool) if mode == "auto" else "") +
         "- A REQUIRED question that has no standard answer and no learned answer: do not guess and\n"
         "  do not leave it blank. Collect every such question on the form, fill everything else,\n"
         "  and report needs-you with each question in pending_questions: the exact question text,\n"

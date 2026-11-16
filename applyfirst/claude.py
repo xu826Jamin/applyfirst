@@ -20,7 +20,7 @@ from . import config, store
 def read_rule(path: str) -> str:
     """A Claude Code permission rule allowing Read of exactly this absolute file.
     Absolute paths in rules start with //: C:\\a\\b.pdf -> Read(//c/a/b.pdf), /a/b -> Read(//a/b)."""
-    p = Path(path).resolve()
+    p = Path(os.path.abspath(path))
     drive = p.drive.rstrip(":").lower()
     rest = p.as_posix()[len(p.drive):].lstrip("/")
     return f"Read(//{drive}/{rest})" if drive else f"Read(//{rest})"
@@ -88,6 +88,7 @@ def run(
     cwd: str | None = None,
     timeout: int = 1800,
     upload_files: list[str] | None = None,   # files the browser may attach (resume, cover letter)
+    mcp_servers: dict | None = None,         # extra MCP servers {name: config}; all their tools allowed
 ) -> Result:
     s = config.load_settings()
     left = budget_left(s)
@@ -111,7 +112,9 @@ def run(
     # Claude in Chrome's file_upload only attaches files the session may Read (Claude Code
     # 2.1.325, seen 2026-11-15). So a run with files to attach gets the Read tool, allowed for
     # exactly those files; any other read is refused by "dontAsk".
-    uploads = [str(Path(f).resolve()) for f in (upload_files or []) if f] if browser else []
+    # Each file under its given path and, when a symlink is involved (macOS /tmp, /home), its real one.
+    uploads = list(dict.fromkeys(
+        p for f in (upload_files or []) if f for p in (os.path.abspath(f), os.path.realpath(f)))) if browser else []
     tools = ["ToolSearch"] if browser else []
     if uploads:
         tools.append("Read")
@@ -122,6 +125,8 @@ def run(
         allowed.append("mcp__claude-in-chrome__*")
     elif browser == "playwright":
         allowed.append("mcp__playwright__*")
+    servers = dict(mcp_servers or {})
+    allowed += [f"mcp__{name}__*" for name in servers]
     if allowed:
         cmd += ["--allowedTools", *allowed]
     cmd += ["--permission-mode", "dontAsk"]
@@ -130,10 +135,12 @@ def run(
         cmd += ["--chrome"]
     elif browser == "playwright":
         profile_dir = str(config.path("browser-profile"))
-        mcp = {"mcpServers": {"playwright": {
+        servers["playwright"] = {
             "command": "npx",
             "args": ["@playwright/mcp@latest", "--user-data-dir", profile_dir],
-        }}}
+        }
+    if servers:
+        mcp = {"mcpServers": servers}
         fd, p = tempfile.mkstemp(suffix=".json")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(mcp, f)

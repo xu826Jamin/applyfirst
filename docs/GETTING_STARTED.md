@@ -153,7 +153,12 @@ Some things only you can do. The browser tool Claude uses does not create accoun
 passwords or solve CAPTCHAs. When an application needs one of those, or a question it has no
 answer for, it waits in the **Needs you** column of **Applications** (and the Home screen tells
 you how many are waiting). Each one says what to do. Do that step, and the application carries
-on. Applications that stop in review mode sit in **Ready to submit** until you press
+on.
+
+Some forms email you a short security code after you press submit (Greenhouse does this). In
+auto mode with your email connected, applyfirst finds the code in your inbox, enters it and
+finishes the application for you. Without email connected, the application waits in **Needs
+you** with the form open, ready for you to type the code. Applications that stop in review mode sit in **Ready to submit** until you press
 submit.
 
 ### Answers

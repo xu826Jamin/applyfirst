@@ -1,10 +1,13 @@
 # Connect your email
 
-Connect your inbox and applyfirst does two things for you:
+Connect your inbox and applyfirst does three things for you:
 
 - **Reads your replies.** Confirmations, assessments, interviews, offers and rejections are spotted
   and matched to your applications. A confirmation email marks an application as submitted, and
   **Insights** then shows what is actually getting you interviews.
+- **Finishes applications that email you a code.** Some forms send a security code after you
+  press submit. In auto mode applyfirst picks the code out of your inbox, enters it and submits.
+  It only uses codes that arrive while that application is open, and never sign-in codes.
 - **Can email you new matches.** Optional. Turn it on and a short list goes to your own address
   whenever new postings fit you.
 

@@ -101,7 +101,8 @@ def test_upload_runs_read_only_their_files_from_an_empty_folder(tmp_home, monkey
     cmd = seen["cmd"]
     assert cmd[cmd.index("--tools") + 1] == "ToolSearch,Read"
     reads = [a for a in cmd if a.startswith("Read(")]
-    assert reads == [claude.read_rule(str(resume))]
+    expected = {claude.read_rule(str(resume)), claude.read_rule(os.path.realpath(str(resume)))}
+    assert reads and set(reads) <= expected and claude.read_rule(str(resume)) in reads
     assert "*" not in reads[0]
     assert os.path.realpath(seen["cwd"]) != os.path.realpath(str(tmp_home))
     assert seen["cwd_files"] == []                       # an empty folder

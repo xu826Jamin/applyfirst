@@ -20,7 +20,7 @@ from .answers import (  # noqa: F401  (public API)
     record_used, salary_from_posting, standard_answers, workday_answers,
 )
 from .brief import RESULT_SCHEMA, STATUSES, build_brief, is_workday
-from . import lessons
+from . import email_code, lessons
 
 # Statuses that mean "this posting is taken care of": never apply to it again.
 DONE_STATUSES = ("submitted", "ready-to-submit", "filling")
@@ -204,10 +204,13 @@ def _finish(app_id: int, res: claude.Result, mode: str, standard: dict,
     notes = (data.get("notes") or "").strip()
     confirmation = (data.get("confirmation_text") or "").strip()
 
-    for q in data.get("pending_questions") or []:
-        if isinstance(q, dict) and q.get("question"):
-            mark_pending(app_id, q["question"], q.get("type", ""), q.get("options") or [])
-    questions = bool(data.get("pending_questions"))
+    # A file field is not a question the person can answer on the Answers screen: the resume or
+    # cover letter is attached by applyfirst, so a failed upload stays in the reason instead.
+    asked = [q for q in data.get("pending_questions") or []
+             if isinstance(q, dict) and q.get("question") and (q.get("type") or "").lower() != "file"]
+    for q in asked:
+        mark_pending(app_id, q["question"], q.get("type", ""), q.get("options") or [])
+    questions = bool(asked)
     if questions and status != "submitted":
         status = "needs-you"
         reason = reason or "A required question needs your answer."
@@ -254,6 +257,8 @@ def _apply_one(posting: dict, existing_id: int | None, run_id: str, settings: di
 
         standard = standard_answers(profile, settings, posting)
         workday = workday_answers(standard, posting) if is_workday(posting) else None
+        browser = config.get(settings, "apply.browser", "chrome-extension")
+        code_tool = mode == "auto" and browser == "chrome-extension" and email_code.is_available()
         brief = build_brief(
             posting, mode=mode, resume_path=resume_path, cover_letter_path=cover,
             cover_letters_setting=config.get(settings, "apply.cover_letters", "when-required"),
@@ -261,6 +266,7 @@ def _apply_one(posting: dict, existing_id: int | None, run_id: str, settings: di
             settings_apply=settings.get("apply", {}), browser=config.get(settings, "apply.browser", "chrome-extension"),
             workday=workday,
             form_notes=lessons.brief_section(lessons.form_system(posting)),
+            email_code_tool=code_tool,
         )
     except Exception as e:  # recorded on the row, never swallowed
         _set(app_id, status="failed", notes=str(e)[:2000])
@@ -273,6 +279,7 @@ def _apply_one(posting: dict, existing_id: int | None, run_id: str, settings: di
         json_schema=RESULT_SCHEMA,
         max_turns=config.get(settings, "claude.max_turns_per_application", 60),
         upload_files=[resume_path] + ([cover] if cover else []),
+        mcp_servers={"applyfirst": email_code.server_config(posting.get("company", ""))} if code_tool else None,
     )
     status, reason = _finish(app_id, res, mode, standard, posting, profile)
     _record_cost(app_id, run_id, mode, res, status)

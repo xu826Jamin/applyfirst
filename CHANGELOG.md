@@ -6,6 +6,9 @@
   that kind of form behaves (Greenhouse, Ashby, Workday and so on) and uses them on the next one.
   See and remove them under **Answers**. When most recent applications on one kind of form fail,
   the run says so.
+- **Emailed security codes are entered for you.** When a form emails a code after submit
+  (Greenhouse does), auto mode reads it from your connected inbox, enters it and finishes the
+  application. Only codes that arrive while that application is open count; sign-in codes never do.
 - **Resume uploads work again** with current Claude Code, which only lets the browser attach
   files the session may read. Each application may now read exactly its resume and cover letter,
   from an empty folder of its own, and nothing else.
