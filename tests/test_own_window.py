@@ -244,3 +244,20 @@ def test_the_brief_names_the_playwright_script_tool_on_this_route():
     assert brief_mod._js_tool("chrome-extension") == "javascript_tool"
     assert "async () =>" in brief_mod._workday_section({"firstName": "A"}, "own-window")
     assert "async () =>" not in brief_mod._workday_section({"firstName": "A"}, "chrome-extension")
+
+
+def test_a_workday_run_may_read_the_filler_on_both_routes(tmp_home, monkeypatch):
+    from applyfirst.apply.brief import WORKDAY_JS
+    for route in ("own-window", "chrome-extension"):
+        seen = _capture(monkeypatch)
+        claude.run("fill", browser=route, read_files=[str(WORKDAY_JS)])
+        cmd = seen["cmd"]
+        assert "Read" in cmd[cmd.index("--tools") + 1].split(",")
+        assert claude.read_rule(str(WORKDAY_JS)) in cmd
+
+
+def test_a_plain_own_window_run_gets_no_read_tool(tmp_home, monkeypatch):
+    seen = _capture(monkeypatch)
+    claude.run("fill", browser="own-window")
+    cmd = seen["cmd"]
+    assert "Read" not in cmd[cmd.index("--tools") + 1].split(",")

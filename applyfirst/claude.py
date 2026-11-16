@@ -182,6 +182,7 @@ def run(
     timeout: int = 1800,
     upload_files: list[str] | None = None,   # files the browser may attach (resume, cover letter)
     mcp_servers: dict | None = None,         # extra MCP servers {name: config}; all their tools allowed
+    read_files: list[str] | None = None,     # files of ours the run must Read (the Workday filler)
 ) -> Result:
     s = config.load_settings()
     if browser and browser not in (ROUTE_EXTENSION, ROUTE_OWN_WINDOW):
@@ -213,6 +214,9 @@ def run(
     uploads = list(dict.fromkeys(
         p for f in (upload_files or []) if f for p in (os.path.abspath(f), os.path.realpath(f)))) \
         if browser == ROUTE_EXTENSION else []
+    # Files the brief tells Claude to Read, on every route; still exactly those paths and no others.
+    uploads += [p for f in (read_files or []) if f
+                for p in dict.fromkeys((os.path.abspath(f), os.path.realpath(f))) if p not in uploads]
     tools = ["ToolSearch"] if browser else []
     if uploads:
         tools.append("Read")

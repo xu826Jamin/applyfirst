@@ -19,7 +19,7 @@ from .answers import (  # noqa: F401  (public API)
     learn, learned_answers, mark_pending, normalize_key, pending_for, questions_of,
     record_used, salary_from_posting, standard_answers, workday_answers,
 )
-from .brief import RESULT_SCHEMA, STATUSES, build_brief, is_workday
+from .brief import RESULT_SCHEMA, STATUSES, WORKDAY_JS, build_brief, is_workday
 from . import email_code, lessons
 
 # Statuses that mean "this posting is taken care of": never apply to it again.
@@ -280,6 +280,7 @@ def _apply_one(posting: dict, existing_id: int | None, run_id: str, settings: di
         max_turns=config.get(settings, "claude.max_turns_per_application", 60),
         upload_files=[resume_path] + ([cover] if cover else []),
         mcp_servers={"applyfirst": email_code.server_config(posting.get("company", ""))} if code_tool else None,
+        read_files=[str(WORKDAY_JS)] if workday else None,
     )
     status, reason = _finish(app_id, res, mode, standard, posting, profile)
     _record_cost(app_id, run_id, mode, res, status)
