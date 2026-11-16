@@ -71,6 +71,47 @@ def test_background_claude_is_locked_down(tmp_home, monkeypatch):
     assert cmd[cmd.index("--tools") + 1] == ""
 
 
+def test_read_rule_names_one_absolute_file():
+    import os
+    if os.name == "nt":
+        assert claude.read_rule(r"C:\Users\a\.applyfirst\r\x.pdf") == "Read(//c/Users/a/.applyfirst/r/x.pdf)"
+    else:
+        assert claude.read_rule("/home/a/.applyfirst/r/x.pdf") == "Read(//home/a/.applyfirst/r/x.pdf)"
+
+
+def test_upload_runs_read_only_their_files_from_an_empty_folder(tmp_home, monkeypatch):
+    """Chrome's file_upload needs Read. Read must cover only the files to attach, and the run
+    must not start in the applyfirst home, where Read would reach the profile and secrets."""
+    import os
+    seen = {}
+
+    class P:
+        returncode, stdout, stderr = 0, '{"result": "ok", "total_cost_usd": 0}', ""
+
+    def fake(cmd, **k):
+        seen["cmd"], seen["cwd"] = cmd, k.get("cwd")
+        seen["cwd_files"] = os.listdir(k["cwd"]) if k.get("cwd") and os.path.isdir(k["cwd"]) else None
+        return P()
+
+    monkeypatch.setattr(claude.subprocess, "run", fake)
+    resume = tmp_home / "resumes" / "Jo_Doe_Resume.pdf"
+    resume.parent.mkdir(parents=True, exist_ok=True)
+    resume.write_bytes(b"%PDF-1.4")
+    claude.run("apply", browser="chrome-extension", upload_files=[str(resume)])
+    cmd = seen["cmd"]
+    assert cmd[cmd.index("--tools") + 1] == "ToolSearch,Read"
+    reads = [a for a in cmd if a.startswith("Read(")]
+    assert reads == [claude.read_rule(str(resume))]
+    assert "*" not in reads[0]
+    assert os.path.realpath(seen["cwd"]) != os.path.realpath(str(tmp_home))
+    assert seen["cwd_files"] == []                       # an empty folder
+    assert not os.path.exists(seen["cwd"])               # removed afterwards
+    # without files to attach, no Read at all
+    claude.run("apply", browser="chrome-extension")
+    assert seen["cmd"][seen["cmd"].index("--tools") + 1] == "ToolSearch"
+    assert not [a for a in seen["cmd"] if a.startswith("Read(")]
+
+
 def test_chrome_runs_are_told_to_close_their_tabs(tmp_home, monkeypatch):
     seen = {}
 

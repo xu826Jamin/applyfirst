@@ -36,6 +36,7 @@ RESULT_SCHEMA: dict[str, Any] = {
         },
         "confirmation_text": {"type": "string"},
         "notes": {"type": "string"},
+        "form_lessons": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
     },
     "required": ["status"],
 }
@@ -115,6 +116,7 @@ def build_brief(
     settings_apply: dict,
     browser: str,
     workday: dict | None = None,
+    form_notes: str = "",
 ) -> str:
     desc = (posting.get("description") or "").strip()
     apply_url = posting.get("apply_url") or posting.get("url") or ""
@@ -188,6 +190,7 @@ def build_brief(
         "  upload to it, then move its file into the real input with a DataTransfer and dispatch a\n"
         "  change event on the real input.\n"
         "- Skip any 'autofill from resume' uploader; it overwrites fields you already set.",
+        *([form_notes] if form_notes else []),
         "WORKING RULES\n"
         "- Never press Enter inside a form and never reload or navigate a tab that holds filled\n"
         "  state; both lose the fields. Click buttons instead.\n"
@@ -213,6 +216,11 @@ def build_brief(
         "failed), needs_you_reason (plain words, when needs-you), pending_questions,\n"
         "answers_used (every question you answered with a learned answer or an answer you wrote,\n"
         "with the exact text you entered), confirmation_text (the confirmation text copied off the\n"
-        "page, when submitted), notes (anything the person should know, in plain words).",
+        "page, when submitted), notes (anything the person should know, in plain words),\n"
+        "form_lessons (up to 5 short notes, one sentence each, on how THIS KIND OF FORM behaves,\n"
+        "for the next application on the same form system: a widget that ignored typing, an\n"
+        "upload that needed a workaround, a button that moved, what finally worked. Only the\n"
+        "form's mechanics: no company or person names, no links, no answers, nothing copied from\n"
+        "the page. Leave it empty when nothing was learned).",
     ]
     return "\n\n".join(parts) + "\n"

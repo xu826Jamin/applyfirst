@@ -20,6 +20,7 @@ from .answers import (  # noqa: F401  (public API)
     record_used, salary_from_posting, standard_answers, workday_answers,
 )
 from .brief import RESULT_SCHEMA, STATUSES, build_brief, is_workday
+from . import lessons
 
 # Statuses that mean "this posting is taken care of": never apply to it again.
 DONE_STATUSES = ("submitted", "ready-to-submit", "filling")
@@ -180,7 +181,17 @@ def _record_cost(app_id: int, run_id: str, mode: str, res: claude.Result, status
         (app_id, run_id, mode, float(res.cost_usd or 0.0), int(res.turns or 0), status, store.now()))
 
 
-def _finish(app_id: int, res: claude.Result, mode: str, standard: dict) -> tuple[str, str]:
+def _forbidden_in_notes(posting: dict, profile: dict) -> list[str]:
+    """Words a form note may not contain: the company and the person's own details."""
+    name = profile.get("name") or {}
+    loc = profile.get("location") or {}
+    return [posting.get("company", ""), name.get("first", ""), name.get("last", ""),
+            name.get("preferred", ""), profile.get("email", ""), profile.get("phone", ""),
+            loc.get("city", ""), loc.get("postal_code", "")]
+
+
+def _finish(app_id: int, res: claude.Result, mode: str, standard: dict,
+            posting: dict | None = None, profile: dict | None = None) -> tuple[str, str]:
     """Turn Claude's report into the application's final row. Returns (status, reason)."""
     data = res.structured if isinstance(res.structured, dict) else None
     if not data or data.get("status") not in STATUSES:
@@ -210,6 +221,9 @@ def _finish(app_id: int, res: claude.Result, mode: str, standard: dict) -> tuple
         reason = ""
 
     record_used(data.get("answers_used") or [], standard)
+    if posting is not None:
+        lessons.record(lessons.form_system(posting), data.get("form_lessons") or [],
+                       _forbidden_in_notes(posting, profile or {}))
 
     fields: dict[str, Any] = {"status": status, "needs_you": reason if status == "needs-you" else "",
                               "notes": "\n".join(x for x in (f"Confirmation: {confirmation}" if confirmation else "", notes) if x)[:4000]}
@@ -246,6 +260,7 @@ def _apply_one(posting: dict, existing_id: int | None, run_id: str, settings: di
             standard=standard, learned=learned_answers(), experience=_confirmed_experience(),
             settings_apply=settings.get("apply", {}), browser=config.get(settings, "apply.browser", "chrome-extension"),
             workday=workday,
+            form_notes=lessons.brief_section(lessons.form_system(posting)),
         )
     except Exception as e:  # recorded on the row, never swallowed
         _set(app_id, status="failed", notes=str(e)[:2000])
@@ -257,8 +272,9 @@ def _apply_one(posting: dict, existing_id: int | None, run_id: str, settings: di
         browser=config.get(settings, "apply.browser", "chrome-extension"),
         json_schema=RESULT_SCHEMA,
         max_turns=config.get(settings, "claude.max_turns_per_application", 60),
+        upload_files=[resume_path] + ([cover] if cover else []),
     )
-    status, reason = _finish(app_id, res, mode, standard)
+    status, reason = _finish(app_id, res, mode, standard, posting, profile)
     _record_cost(app_id, run_id, mode, res, status)
     store.log(run_id, f"{posting.get('company')} / {posting.get('title')}: {status}"
                       + (f" ({reason})" if reason else "") + f", cost ${res.cost_usd:.2f}")
@@ -285,6 +301,7 @@ def apply_queue(run_id: str, limit: int | None = None) -> str:
     cost_before = (store.one("SELECT COALESCE(SUM(cost_usd),0) c FROM application_costs") or {}).get("c", 0.0)
     done = 0
     fail_streak = 0
+    warnings: list[str] = []
     for posting, existing in _candidates(settings, queue_fn):
         if done >= budget:
             break
@@ -292,6 +309,11 @@ def apply_queue(run_id: str, limit: int | None = None) -> str:
         counts[status] = counts.get(status, 0) + 1
         done += 1
         fail_streak = fail_streak + 1 if status == "failed" else 0
+        if status == "failed":
+            warn = lessons.recurring_failure(lessons.form_system(posting))
+            if warn and warn not in warnings:
+                store.log(run_id, warn)
+                warnings.append(warn)
         if fail_streak >= 3:
             store.log(run_id, "Stopping: three applications in a row failed.")
             break
@@ -308,4 +330,5 @@ def apply_queue(run_id: str, limit: int | None = None) -> str:
         bits.append(f"{counts['needs-you']} need you")
     if counts["failed"]:
         bits.append(f"{counts['failed']} failed")
-    return f"Worked on {done} applications: " + ", ".join(bits) + f". Cost ${cost:.2f}."
+    return (f"Worked on {done} applications: " + ", ".join(bits) + f". Cost ${cost:.2f}."
+            + "".join(" " + w for w in warnings))

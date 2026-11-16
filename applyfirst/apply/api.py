@@ -6,7 +6,7 @@ import json
 from fastapi import APIRouter, HTTPException
 
 from .. import jobs, store
-from . import apply_queue, normalize_key, questions_of
+from . import apply_queue, lessons, normalize_key, questions_of
 
 router = APIRouter()
 
@@ -93,6 +93,19 @@ def put_answer(key: str, body: dict) -> dict:
         store.upsert("answers", {"key": k, "question": key, "answer": answer, "source": "user",
                                  "pending": 0, "updated_at": now}, key="key")
     return store.one("SELECT * FROM answers WHERE key=?", (k,)) or {}
+
+
+@router.get("/form-notes")
+def form_notes() -> list[dict]:
+    """Per form system: how applications ended, and what earlier applications learned."""
+    return lessons.overview()
+
+
+@router.delete("/form-notes/{system}/{key:path}")
+def delete_form_note(system: str, key: str) -> dict:
+    if not lessons.delete(system, key):
+        raise HTTPException(404, "No such note.")
+    return {"deleted": key}
 
 
 @router.get("/cost")

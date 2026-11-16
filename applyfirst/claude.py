@@ -11,9 +11,19 @@ import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from . import config, store
+
+
+def read_rule(path: str) -> str:
+    """A Claude Code permission rule allowing Read of exactly this absolute file.
+    Absolute paths in rules start with //: C:\\a\\b.pdf -> Read(//c/a/b.pdf), /a/b -> Read(//a/b)."""
+    p = Path(path).resolve()
+    drive = p.drive.rstrip(":").lower()
+    rest = p.as_posix()[len(p.drive):].lstrip("/")
+    return f"Read(//{drive}/{rest})" if drive else f"Read(//{rest})"
 
 
 @dataclass
@@ -77,6 +87,7 @@ def run(
     max_turns: int | None = None,
     cwd: str | None = None,
     timeout: int = 1800,
+    upload_files: list[str] | None = None,   # files the browser may attach (resume, cover letter)
 ) -> Result:
     s = config.load_settings()
     left = budget_left(s)
@@ -97,8 +108,16 @@ def run(
     # Claude gets no shell, no file reading or writing and no web fetching. A browser run gets
     # the browser tools (and ToolSearch, which loads them); anything else is refused without a
     # prompt ("dontAsk").
-    cmd += ["--tools", "ToolSearch" if browser else ""]
+    # Claude in Chrome's file_upload only attaches files the session may Read (Claude Code
+    # 2.1.325, seen 2026-11-15). So a run with files to attach gets the Read tool, allowed for
+    # exactly those files; any other read is refused by "dontAsk".
+    uploads = [str(Path(f).resolve()) for f in (upload_files or []) if f] if browser else []
+    tools = ["ToolSearch"] if browser else []
+    if uploads:
+        tools.append("Read")
+    cmd += ["--tools", ",".join(tools)]
     allowed = list(allowed_tools or [])
+    allowed += [read_rule(f) for f in uploads]
     if browser == "chrome-extension":
         allowed.append("mcp__claude-in-chrome__*")
     elif browser == "playwright":
@@ -127,10 +146,14 @@ def run(
         store.log(run_id, f"claude: starting ({len(prompt)} chars, browser={browser})")
     if browser == "chrome-extension":
         prompt = prompt.rstrip() + "\n\n" + CHROME_TABS_RULE
+    # With Read switched on, Claude Code also reads anything under its working directory without
+    # asking. The applyfirst home holds the profile and the email password, so a run that can Read
+    # starts in an empty folder of its own; the files to attach are allowed one by one above.
+    sandbox = tempfile.mkdtemp(prefix="applyfirst-run-") if uploads and not cwd else None
     try:
         proc = subprocess.run(
             cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
-            timeout=timeout, cwd=cwd or str(config.home()),
+            timeout=timeout, cwd=cwd or sandbox or str(config.home()),
         )
     except FileNotFoundError:
         return Result(False, error="Claude Code is not installed or not on PATH.")
@@ -142,6 +165,8 @@ def run(
                 os.unlink(p)
             except OSError:
                 pass
+        if sandbox:
+            shutil.rmtree(sandbox, ignore_errors=True)
 
     try:
         data = json.loads(proc.stdout.strip().splitlines()[-1]) if proc.stdout.strip() else {}

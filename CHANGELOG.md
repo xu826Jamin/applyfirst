@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Gets better with every application.** After each form, applyfirst keeps short notes on how
+  that kind of form behaves (Greenhouse, Ashby, Workday and so on) and uses them on the next one.
+  See and remove them under **Answers**. When most recent applications on one kind of form fail,
+  the run says so.
+- **Resume uploads work again** with current Claude Code, which only lets the browser attach
+  files the session may read. Each application may now read exactly its resume and cover letter,
+  from an empty folder of its own, and nothing else.
+
 ## 0.1.0 (2026-11-15)
 
 First public release, under the GNU Affero General Public License v3.0 or later.

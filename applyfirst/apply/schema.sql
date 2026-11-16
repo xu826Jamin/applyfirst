@@ -23,3 +23,14 @@ CREATE TABLE IF NOT EXISTS application_questions (
   created_at     TEXT NOT NULL,
   PRIMARY KEY (application_id, key)
 );
+
+-- What earlier applications learned about each form system (apply/lessons.py).
+CREATE TABLE IF NOT EXISTS form_notes (
+  system     TEXT NOT NULL,              -- greenhouse | ashby | workday | ... | a host name
+  key        TEXT NOT NULL,              -- the note, normalised, for counting repeats
+  note       TEXT NOT NULL,
+  seen       INTEGER NOT NULL DEFAULT 1, -- how many applications reported it
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (system, key)
+);

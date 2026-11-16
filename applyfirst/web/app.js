@@ -535,7 +535,8 @@ async function answersScreen(page) {
   page.append(head("Answers", "Answer a question once and it is used on every application."));
   const box = h("div", null, skeletons(3));
   page.append(box);
-  const [pend, all] = await Promise.all([api("GET", "/apply/answers?pending=1"), api("GET", "/apply/answers")]);
+  const [pend, all, notesRes] = await Promise.all([api("GET", "/apply/answers?pending=1"), api("GET", "/apply/answers"), api("GET", "/apply/form-notes")]);
+  let systems = notesRes.ok ? listOf(notesRes.data).filter((s) => (s.notes || []).length) : [];
   if (!pend.ok && !all.ok) {
     box.replaceChildren(empty("answers", "Questions will show up here", "When an application asks something new, it lands here for you to answer once. Your answers are saved for next time.", h("a", { class: "btn primary", href: "#/jobs" }, "Go to Jobs")));
     return;
@@ -598,6 +599,24 @@ async function answersScreen(page) {
     }
     const listBox = h("div", { id: "learned-list" });
     parts.push(listBox);
+    if (systems.length) {
+      parts.push(h("div", { class: "section-title" }, h("h2", null, "What it has learned about application forms"),
+        h("span", { class: "muted small" }, "Used on the next form of the same kind")));
+      parts.push(h("div", { class: "card" }, systems.map((s) => h("div", { class: "qa" },
+        h("div", { class: "q" }, s.system.charAt(0).toUpperCase() + s.system.slice(1)),
+        h("ul", { class: "form-notes" }, s.notes.map((n) => {
+          const del = h("button", { class: "btn small quiet", "aria-label": `Forget: ${n.note}`, onclick: async () => {
+            del.disabled = true;
+            const r = await api("DELETE", `/apply/form-notes/${encodeURIComponent(s.system)}/${encodeURIComponent(n.key)}`);
+            if (!r.ok) { toast("That note was not removed. " + r.error, { error: true }); del.disabled = false; return; }
+            s.notes = s.notes.filter((x) => x.key !== n.key);
+            systems = systems.filter((x) => x.notes.length);
+            draw();
+          } }, "Forget");
+          return h("li", null, h("span", null, n.note),
+            n.seen > 1 ? h("span", { class: "meta" }, ` Seen on ${n.seen} applications`) : null, " ", del);
+        }))))));
+    }
     box.replaceChildren(...parts);
     drawList();
     function drawList() {
