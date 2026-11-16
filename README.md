@@ -10,6 +10,18 @@ your inbox so you can see which applications turn into interviews and which do n
 Everything runs on your own computer. Your resume, answers and inbox never leave it, except
 the applications you send to employers and the work Claude does for you.
 
+## Set it up with Claude
+
+Open Claude Code and paste this:
+
+```
+Set up applyfirst for me. Read https://raw.githubusercontent.com/xu826Jamin/applyfirst/main/AGENTS.md first and follow it step by step.
+```
+
+Claude tells you everything you need up front, checks and installs it with you, keeps applyfirst
+up to date every 3 days, and walks you to your first application. AI agents setting this up:
+read [AGENTS.md](AGENTS.md) before anything else.
+
 ![Jobs: the newest postings that fit you, each with why it was kept](docs/images/jobs.png)
 
 ![Settings: every choice in plain words, saved straight away](docs/images/settings.png)

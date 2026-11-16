@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Set it up with Claude.** Paste one line into Claude Code and it tells you everything you need
+  up front (including what only you can do, like creating job-site accounts), checks and installs
+  it with you, schedules an update every 3 days, and walks you to your first application.
+  Instructions for the agent are in AGENTS.md.
 - **No extension needed.** applyfirst now opens its own Chrome window (Chrome, Edge or Chromium)
   and fills applications there. It stays open after each application, so in review mode the filled
   form is waiting for you, and the job sites you sign in to in it are remembered. It uses its own
