@@ -43,8 +43,8 @@ when one has already happened.
 Good to know:
 
 - **Applying needs your desktop.** Search and email checking run without it. Filling applications
-  happens in your own Chrome, so for auto mode the computer must be awake, you signed in, and
-  Chrome open.
+  happens in a Chrome window on your desktop, so for auto mode the computer must be awake, you signed in, and
+  Chrome available.
 - **Claude Code must be reachable from the scheduler.** Schedulers start with a thinner
   environment than your terminal. If a scheduled run says Claude Code is not installed, put the
   full path to it in **Claude command** under **Settings, Claude**.

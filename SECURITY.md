@@ -36,9 +36,20 @@ system supports it) and the app never shows it back.
 you see each one before it is sent. Auto mode sends without asking, and Settings says so beside it.
 Claude does not create accounts, type passwords or solve CAPTCHAs; those wait for you.
 
-## The one limit to know about
+**The applyfirst Chrome window has its own profile and a local-only port.** By default applications
+are filled in a Chrome window applyfirst opens itself (see `applyfirst/own_window.py`). It runs on a
+separate profile inside your applyfirst folder, so your own Chrome profile, tabs and saved passwords
+are never touched, and Claude is not allowed to read that profile folder. Claude reaches the window
+through a Chrome debugging port that is bound to `127.0.0.1`, which is this computer only; nothing
+on your network can connect to it. Like any Chrome debugging port, a program already running as you
+on this computer could connect to it while the window is open, so close the window when you are not
+applying. The file-upload tool in this route can only attach files from an empty folder of its own
+that holds a copy of the resume and cover letter for that one application.
 
-Claude fills forms through the Claude in Chrome extension, and that extension's file-upload tool
+## The limit to know about on the extension route
+
+If you choose to fill applications in your own Chrome through the Claude in Chrome extension,
+that extension's file-upload tool
 can attach any file on the computer. That is how your resume gets onto an application. It also means
 that a posting written to trick Claude could, in principle, ask it to upload a different file to
 the employer's form.

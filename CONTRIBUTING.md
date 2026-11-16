@@ -19,7 +19,7 @@ step, and a SQLite database in the user's data folder (`~/.applyfirst`, or where
 | `applyfirst/sources/` | Find postings: one reader per job-board system, board discovery, pasted links |
 | `applyfirst/filters/` | Decide what to keep and in what order, with a plain reason for every verdict |
 | `applyfirst/resume/` | Import a resume, keep the experience bank, build resumes from confirmed lines |
-| `applyfirst/apply/` | Fill and submit applications with Claude Code in the user's Chrome |
+| `applyfirst/apply/` | Fill and submit applications with Claude Code in a Chrome window (`own_window.py`) |
 | `applyfirst/tracker/` | Read replies over IMAP (read only) and compute what gets interviews |
 | `applyfirst/web/` | The interface: `app.js`, `setup.js`, `settings.js`, `lib.js` |
 | `applyfirst/config.py` | Every setting and its default, in `DEFAULT_SETTINGS` |
@@ -72,7 +72,7 @@ python tests/e2e/run_e2e.py --apply
 ```
 
 Claude fills the form and leaves it unsubmitted. Nothing is sent to the employer. This run uses the
-Playwright browser option (started through `npx`), so it also needs Node.js. Add `--discover`
+applyfirst Chrome window (reached through `npx`), so it also needs Node.js. Add `--discover`
 to run full board discovery on the first search. The script exits 0 only when every check passed.
 
 ## Fix or add a job-site reader

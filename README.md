@@ -62,10 +62,13 @@ You need:
 - Python 3.10 or newer
 - [Claude Code](https://code.claude.com/docs/en/quickstart), signed in (tested with 2.1.325, needs
   2.1.0 or newer)
-- Google Chrome with the [Claude in Chrome extension](https://code.claude.com/docs/en/chrome)
-  connected to Claude Code. Applications are filled in your own Chrome, so the sites you are
-  already signed in to just work, and in review mode the filled form stays open for you to check
-  and submit.
+- [Node.js](https://nodejs.org/) (the free LTS version) and Google Chrome, Edge or Chromium.
+  Applications are filled in a Chrome window applyfirst opens for you. Sign in to a job site in
+  that window once and it remembers you, and in review mode the filled form stays open in it for
+  you to check and submit. No extension to install.
+- Optional: the [Claude in Chrome extension](https://code.claude.com/docs/en/chrome) connected to
+  Claude Code, if you would rather fill applications in your own Chrome with the sign-ins it
+  already has. applyfirst uses it automatically when it is set up.
 
 ```
 pip install git+https://github.com/xu826Jamin/applyfirst
@@ -99,7 +102,7 @@ applications gone too.
 
 1. **Jobs** lists the postings that fit, newest first, each with why it was kept. Approve the
    ones you want, then press **Apply to approved**.
-2. Claude opens each application in your Chrome, attaches your resume and fills every field it
+2. Claude opens each application in Chrome, attaches your resume and fills every field it
    can from your profile and saved answers.
 3. In review mode it stops before the final button. Check the tab, press submit yourself, then
    mark it **I submitted it** under **Applications** (with email connected, the confirmation

@@ -5,6 +5,7 @@ Find your symptom, follow the steps, and you are back to applying. New here? Sta
 
 - [`applyfirst` command not found](#applyfirst-command-not-found)
 - ["Claude Code is not installed" banner](#claude-code-is-not-installed-banner)
+- [Applications fail in the applyfirst Chrome window](#applications-fail-in-the-applyfirst-chrome-window)
 - [Applications fail because Chrome is not connected](#applications-fail-because-chrome-is-not-connected)
 - [Jobs is empty](#jobs-is-empty)
 - [Port already in use](#port-already-in-use)
@@ -56,13 +57,36 @@ The red banner on the Home screen says applications cannot be filled yet. Search
 A banner that says your Claude Code version is too old means update it. applyfirst needs 2.1.0 or
 newer.
 
+## Applications fail in the applyfirst Chrome window
+
+This is the default way applications are filled: applyfirst opens its own Chrome window.
+Symptoms: a banner asking you to install Node.js or Chrome, or **Activity** saying the window did
+not start.
+
+1. **Install [Node.js](https://nodejs.org/)** (the LTS version) if the banner asks for it, then
+   reload the applyfirst page. Check it with `node --version` in a new terminal.
+2. **A Chrome, Edge or Chromium must be installed.** applyfirst uses the first one it finds. To pick
+   one, set the `APPLYFIRST_BROWSER` environment variable to its full path.
+3. **"The window did not start"**: close any leftover applyfirst Chrome window and try again. If it
+   keeps happening, delete the `browser-window` folder inside your applyfirst folder (you will sign
+   in to your job sites again) and try again.
+4. **Applications stop on a sign-in page.** Sign in to that site in the applyfirst Chrome window,
+   once, then press **Try again**. It remembers you afterwards.
+5. Closing the window while applications are running stops them. Leave it open until the run ends;
+   applyfirst opens it again by itself next time.
+6. Your own Chrome is never used by this route. To use it, with its sign-ins, set up Claude in
+   Chrome (next section) and leave **Browser** on **Automatic**, or choose **My own Chrome and its
+   sign-ins**.
+
 ## Applications fail because Chrome is not connected
 
+Only for **My own Chrome and its sign-ins**, or when **Automatic** found Claude in Chrome set up.
 Symptoms: applications land under **Did not finish** on the **Applications** screen, or **Activity**
 shows messages like "Browser extension is not connected" or "No browsers are connected".
 After three applications in a row fail, the run stops so nothing is wasted.
 
-Work down this list, using Anthropic's page as the reference:
+To stop using the extension, set **Browser** to **The applyfirst Chrome window** in Settings.
+Otherwise work down this list, using Anthropic's page as the reference:
 [Use Claude Code with Chrome](https://code.claude.com/docs/en/chrome).
 
 1. **Chrome is open**, with the Claude in Chrome extension installed and enabled
@@ -166,7 +190,7 @@ Some employers want an account before you can apply. The browser tool Claude use
 accounts, type passwords or solve CAPTCHAs, so the application waits under **Needs you** and says
 which site.
 
-1. Sign in (or create the account) yourself, in the same Chrome that applyfirst is using. Chrome
+1. Sign in (or create the account) yourself, in the same Chrome window that applyfirst is using (the applyfirst Chrome window, or your own Chrome if you chose that). Chrome
    remembers it, so every later application to that employer just works.
 2. Finish the application, in either of two ways:
    - **Do it yourself.** Switch to the open tab, complete the form, press the employer's submit

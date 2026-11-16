@@ -219,7 +219,7 @@ def step_setup(pdf: Path | None) -> None:
     s["search"].update({"countries": ["CA"], "regions": ["Ontario"], "remote": "include",
                         "levels": ["internship", "co-op", "new-grad"], "fields": ["software", "hardware", "data-ml"]})
     s["queue"].update({"order_by": "newest", "then_by": "deadline", "daily_limit": 1})
-    s["apply"].update({"mode": "review", "browser": "playwright"})
+    s["apply"].update({"mode": "review", "browser": "own-window"})
     code, saved = call("PUT", "/api/settings", s)
     check("setup", "settings save and read back", code == 200 and saved["settings"]["search"]["regions"] == ["Ontario"])
     check("setup", "warnings ship with settings", "sources.linkedin" in saved.get("warnings", {}))

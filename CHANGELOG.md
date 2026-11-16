@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **No extension needed.** applyfirst now opens its own Chrome window (Chrome, Edge or Chromium)
+  and fills applications there. It stays open after each application, so in review mode the filled
+  form is waiting for you, and the job sites you sign in to in it are remembered. It uses its own
+  profile and a debugging port bound to this computer only; your own Chrome is never touched. You
+  need Node.js. **Browser** in Settings is now **Automatic** by default: your own Chrome through
+  Claude in Chrome when that is already set up, the applyfirst window otherwise. The extension is
+  optional, and the old Playwright option is the applyfirst window under its new name.
+- **Emailed security codes** are entered in the applyfirst window as well as in your own Chrome.
 - **Gets better with every application.** After each form, applyfirst keeps short notes on how
   that kind of form behaves (Greenhouse, Ashby, Workday and so on) and uses them on the next one.
   See and remove them under **Answers**. When most recent applications on one kind of form fail,

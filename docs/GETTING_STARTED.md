@@ -7,14 +7,16 @@ Stuck anywhere? [TROUBLESHOOTING.md](TROUBLESHOOTING.md) has the fix for the com
 
 ## 1. Install what applyfirst runs on
 
-You need four things.
+You need these.
 
 | You need | Why | Check it |
 | --- | --- | --- |
 | **Python 3.10 or newer** | applyfirst is a Python app | `python --version` |
 | **Git** | pip uses it to download applyfirst from GitHub ([download Git](https://git-scm.com/downloads)) | `git --version` |
 | **Claude Code**, signed in | Claude does the form filling | `claude --version` |
-| **Google Chrome** with the **Claude in Chrome** extension, connected to Claude Code | Applications are filled in your own Chrome, so every site you are already signed in to just works | see "Claude in Chrome" below |
+| **Node.js** ([download](https://nodejs.org/), the LTS version) | Claude reaches the Chrome window applyfirst opens through it | `node --version` |
+| **Google Chrome**, Edge or Chromium | Applications are filled in a Chrome window applyfirst opens for you | you almost certainly have one |
+| *Optional:* the **Claude in Chrome** extension, connected to Claude Code | Fills applications in your own Chrome, with the sign-ins it already has | see "Claude in Chrome" below |
 
 ### Claude Code
 
@@ -43,9 +45,22 @@ claude --version
 applyfirst was tested with Claude Code 2.1.325 and needs **2.1.0 or newer**. If yours is older,
 update it (the quickstart page above covers updating).
 
-### Claude in Chrome
+### The applyfirst Chrome window
 
-applyfirst fills forms through the [Claude in Chrome extension](https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn).
+Nothing to set up. The first time you apply, applyfirst opens its own Chrome window (Chrome, or
+Edge or Chromium if that is what you have). It uses a separate profile stored inside the applyfirst
+folder, so your own Chrome, its tabs and its passwords are never touched. The window stays open
+after each application so you can review the filled form.
+
+The first time a job site asks you to sign in, sign in in that window. It remembers you for every
+application after that. Do not close the window while applications are running.
+
+### Claude in Chrome (optional)
+
+If you would rather fill applications in your own Chrome, with every site you are already signed in
+to, add the [Claude in Chrome extension](https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn).
+With **Browser** left on **Automatic** in Settings, applyfirst uses it as soon as it is connected
+and uses the applyfirst Chrome window until then. You can also pick either one yourself in Settings.
 Anthropic's page for connecting it to Claude Code is
 [Use Claude Code with Chrome](https://code.claude.com/docs/en/chrome). The short version:
 
@@ -126,7 +141,7 @@ Jobs and press **Add**; it is added and approved in one step.
 1. On **Jobs**, the **Kept** tab holds the postings that fit you. Press **Approve** on the ones you
    want. You can also tick several and approve them together.
 2. Press **Apply to approved** (the button shows how many, for example "Apply to 3 approved").
-3. Claude opens each application in your Chrome, attaches your resume and fills every field it
+3. Claude opens each application in Chrome, attaches your resume and fills every field it
    can from your profile and your saved answers.
 
 How many applications go out in one day is capped by **Applications per day** in Settings
@@ -137,7 +152,7 @@ How many applications go out in one day is capped by **Applications per day** in
 You choose under **When to send** in Settings (the setup step offers the same choice).
 
 - **Show me each one before it is sent** (review mode, the default). Claude fills the form and
-  stops before the final button, leaving the tab open in Chrome. Look it over, press the
+  stops before the final button, leaving the tab open in the applyfirst Chrome window. Look it over, press the
   employer's submit button yourself, then open **Applications** and press **I submitted it**. If
   you have connected email, the employer's confirmation email marks it for you.
 - **Send without asking** (auto mode). Claude submits and saves the confirmation. You can still
