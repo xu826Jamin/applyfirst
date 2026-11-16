@@ -14,9 +14,32 @@ const ctx = { name: "", onTick: null, onRunDone: null };
 let prevRunning = [];
 let tickTimer = null;
 
-// Applications are filled in the person's own Chrome through Claude in Chrome. Says the one
-// next step still missing, or nothing once all three are in place.
+// Applications are filled either in a Chrome window applyfirst opens (nothing to install beyond
+// Node.js) or, when the person chose it, in their own Chrome through Claude in Chrome. Says the one
+// next step still missing for the route in use, or nothing once it is ready.
+const INTRO_KEY = "applyfirst.ownWindowIntro";
+
+function ownWindowNotice(st) {
+  const o = st && st.own_window;
+  if (!o) return null;
+  const link = (href, text) => h("a", { href, target: "_blank", rel: "noopener" }, text);
+  if (!o.node) return notice(["One step to start applying: install ", link("https://nodejs.org/", "Node.js"), " (the free LTS version), then reload this page. Searching works in the meantime."], "error");
+  if (!o.browser) return notice(["applyfirst fills your applications in Chrome. Install ", link("https://www.google.com/chrome/", "Chrome"), ", then reload this page. Searching works in the meantime."], "error");
+  let seen = false;
+  try { seen = !!localStorage.getItem(INTRO_KEY); } catch (e) { /* storage blocked: show it each time */ }
+  if (seen) return null;
+  const box = notice("Your applications open in their own applyfirst Chrome window, so you can watch each one being filled. The first time a job site asks you to sign in, sign in right there. It remembers you for every application after that.", "info");
+  const ok = h("button", { class: "btn small", style: "margin-left:auto;align-self:center;flex:none", onclick: () => {
+    try { localStorage.setItem(INTRO_KEY, "1"); } catch (e) { /* ignore */ }
+    box.remove();
+  } }, "Got it");
+  box.append(ok);
+  return box;
+}
+
 function chromeNotice(st) {
+  const own = ownWindowNotice(st);
+  if (own) return own;
   const c = st && st.chrome;
   if (!c) return null;
   const link = (href, text) => h("a", { href, target: "_blank", rel: "noopener" }, text);

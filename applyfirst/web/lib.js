@@ -401,7 +401,7 @@ export const OPTIONS = {
   tailoring: [["ideal", "Ideal per role group, adjusted to each job"], ["per-job", "Built fresh for every job"], ["as-is", "My own resume, sent as I made it"]],
   letters: [["never", "Never"], ["when-required", "Only when the job asks"], ["always", "Always"]],
   commitments: [["yes", "Say yes to relocation, start date, term and travel"], ["literal", "Answer exactly as my profile says"]],
-  browser: [["chrome-extension", "Chrome with Claude in Chrome"], ["playwright", "Playwright"]],
+  browser: [["auto", "Automatic (recommended)"], ["own-window", "The applyfirst Chrome window"], ["chrome-extension", "My own Chrome and its sign-ins"]],
 };
 
 const upper = (s) => s.trim().toUpperCase();
@@ -450,7 +450,7 @@ export const SETTING_DEFS = {
   "apply.cover_letters": { label: "Cover letters", help: "When to write one.", type: "select", options: OPTIONS.letters },
   "apply.future_commitments": { label: "Relocation, start date, term, travel", help: "How to answer questions about future commitments.", type: "select", options: OPTIONS.commitments },
   "apply.verify_resume_lines": { label: "Check resume lines", help: "Every line on a resume must trace back to your experience.", type: "toggle" },
-  "apply.browser": { label: "Browser", help: "Which browser fills the forms.", type: "select", options: OPTIONS.browser },
+  "apply.browser": { label: "Browser", help: "Where applications are filled. Automatic uses your own Chrome when Claude in Chrome is set up, and a Chrome window applyfirst opens for you otherwise.", type: "select", options: OPTIONS.browser },
   "apply.pace_seconds": { label: "Pause between requests", help: "Minimum seconds between requests to one site.", type: "number", min: 0, unit: "seconds" },
 
   "tracker.email.enabled": { label: "Read my replies", help: "Spots confirmations, interviews and rejections in your inbox. It only reads: it never sends, moves or deletes mail.", type: "toggle" },
@@ -500,7 +500,6 @@ export function warningActive(path, value) {
   if (path === "apply.verify_resume_lines") return value === false;
   if (path === "apply.pace_seconds") return typeof value === "number" && value < 3;
   if (path === "claude.daily_budget_usd") return value === 0;
-  if (path === "apply.browser") return value === "playwright";
   if (typeof value === "boolean") return value;
   return !!value;
 }
