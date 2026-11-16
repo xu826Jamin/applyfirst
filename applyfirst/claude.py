@@ -66,6 +66,63 @@ def version_info() -> dict:
     return info
 
 
+EXTENSION_ID = "fcoeoabgfenejglbffodgkkbkcdhcgfn"            # Claude in Chrome, Chrome Web Store
+NATIVE_HOST = "com.anthropic.claude_code_browser_extension"  # written by `claude --chrome`
+
+
+def _chrome_user_data() -> Path:
+    if os.name == "nt":
+        local = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+        return Path(local) / "Google" / "Chrome" / "User Data"
+    if os.uname().sysname == "Darwin":
+        return Path.home() / "Library" / "Application Support" / "Google" / "Chrome"
+    return Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "google-chrome"
+
+
+def _chrome_exe_found() -> bool:
+    pf = os.environ.get("PROGRAMFILES", r"C:\Program Files")
+    pf86 = os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
+    local = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+    paths = [
+        rf"{pf}\Google\Chrome\Application\chrome.exe",
+        rf"{pf86}\Google\Chrome\Application\chrome.exe",
+        rf"{local}\Google\Chrome\Application\chrome.exe",
+        "/Applications/Google Chrome.app",
+        str(Path.home() / "Applications" / "Google Chrome.app"),
+    ]
+    if any(os.path.exists(p) for p in paths):
+        return True
+    return any(shutil.which(n) for n in ("google-chrome", "google-chrome-stable"))
+
+
+def _native_host_registered(user_data: Path) -> bool:
+    if os.name == "nt":
+        import winreg
+        try:
+            winreg.CloseKey(winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                           rf"Software\Google\Chrome\NativeMessagingHosts\{NATIVE_HOST}"))
+            return True
+        except OSError:
+            return False
+    return (user_data / "NativeMessagingHosts" / f"{NATIVE_HOST}.json").exists()
+
+
+def chrome_info(user_data: Path | None = None) -> dict:
+    """{chrome, extension, connected} for the status screen: is Chrome installed, is Claude in
+    Chrome added to any Chrome profile, and has `claude --chrome` been run so Claude Code can reach
+    it. Plain file and registry reads, so it is not cached: a reload after setup clears the notice."""
+    ud = user_data or _chrome_user_data()
+    chrome = ud.is_dir() or _chrome_exe_found()
+    extension = False
+    if ud.is_dir():
+        for prof in ud.iterdir():
+            if (prof / "Extensions" / EXTENSION_ID).is_dir():
+                extension = True
+                break
+    connected = _native_host_registered(ud)
+    return {"chrome": chrome, "extension": extension, "connected": connected}
+
+
 # Every run in the person's own Chrome opens its tabs in a new tab group. Chrome removes a group
 # when its last tab closes, so closing the tabs is what cleans the group up.
 CHROME_TABS_RULE = (

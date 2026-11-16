@@ -14,6 +14,21 @@ const ctx = { name: "", onTick: null, onRunDone: null };
 let prevRunning = [];
 let tickTimer = null;
 
+// Applications are filled in the person's own Chrome through Claude in Chrome. Says the one
+// next step still missing, or nothing once all three are in place.
+function chromeNotice(st) {
+  const c = st && st.chrome;
+  if (!c) return null;
+  const link = (href, text) => h("a", { href, target: "_blank", rel: "noopener" }, text);
+  const store = link("https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn", "Claude in Chrome");
+  const guide = link("https://github.com/xu826Jamin/applyfirst/blob/main/docs/GETTING_STARTED.md#claude-in-chrome", "setup guide");
+  const cmd = h("code", null, "claude --chrome");
+  if (!c.chrome) return notice(["applyfirst fills your applications in Google Chrome. Install ", link("https://www.google.com/chrome/", "Chrome"), ", add the free ", store, " extension, then reload this page. Searching works in the meantime. Two-minute ", guide, "."], "error");
+  if (!c.extension) return notice(["One step to start applying: add the free ", store, " extension to Chrome, run ", cmd, " once in a terminal, then reload this page. Two-minute ", guide, "."], "error");
+  if (!c.connected) return notice(["Almost there: run ", cmd, " once in a terminal so Claude can reach your Chrome, restart Chrome, then reload this page. See the ", guide, " if it still shows."], "error");
+  return null;
+}
+
 function safeUrl(u) {
   return /^https?:\/\//i.test(String(u || "")) ? u : "";
 }
@@ -170,6 +185,9 @@ async function homeScreen(page, c) {
     page.append(notice("Claude Code is not installed, so applications cannot be filled yet. Searching still works. Install Claude Code, sign in once, then reload this page. See the setup guide on GitHub.", "error"));
   } else if (cl.installed && cl.version && cl.ok === false) {
     page.append(notice(`Claude Code ${cl.version} is too old for applyfirst. Update it, then reload this page.`, "error"));
+  } else {
+    const cn = chromeNotice(st);
+    if (cn) page.append(cn);
   }
 
   // One primary action: the most useful thing to do next.
@@ -229,6 +247,9 @@ async function jobsScreen(page, c) {
   const searchBtn = h("button", { class: "btn", onclick: () => startSweep(searchBtn) }, icon("search", 16), "Search now");
   const applyBtn = h("button", { class: "btn primary", onclick: applyApproved }, "Apply to approved");
   page.append(head("Jobs", "New postings that fit what you want, newest first.", searchBtn, applyBtn));
+  if (!S.status) { const r = await api("GET", "/status"); if (r.ok && r.data) S.status = r.data; }
+  const cn = chromeNotice(S.status);
+  if (cn) page.append(cn);
 
   // Order picker, bound to the queue settings.
   const orderBox = h("div", { class: "order" });

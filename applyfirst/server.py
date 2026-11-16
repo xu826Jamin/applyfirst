@@ -117,6 +117,7 @@ def status() -> dict:
         "pending_questions": count("SELECT COUNT(*) n FROM answers WHERE pending=1"),
         "running": jobs.running(),
         "claude": _claude_info(),
+        "chrome": _chrome_info(),
         "spent_today_usd": round(_spent_today(), 2),
         "last_runs": store.rows("SELECT * FROM runs ORDER BY started_at DESC LIMIT 10"),
     }
@@ -125,6 +126,17 @@ def status() -> dict:
 def _claude_info() -> dict:
     from . import claude
     return claude.version_info()
+
+
+def _chrome_info() -> dict | None:
+    # Only the Claude in Chrome route needs Chrome; the Playwright route brings its own browser.
+    from . import claude
+    if config.get(config.load_settings(), "apply.browser", "chrome-extension") != "chrome-extension":
+        return None
+    try:
+        return claude.chrome_info()
+    except OSError:
+        return None
 
 
 def _spent_today() -> float:
