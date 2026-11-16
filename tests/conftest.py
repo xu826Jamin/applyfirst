@@ -24,6 +24,20 @@ def no_real_claude(monkeypatch):
     monkeypatch.setattr(claude, "available", lambda: False)
     monkeypatch.setattr(subprocess, "run", guarded)
 
+@pytest.fixture(autouse=True)
+def no_real_window(monkeypatch):
+    """A test never opens a real Chrome window or needs Node.js. A run on the applyfirst-window
+    route gets a pretend window on port 9333; a test of the launcher fakes the process start."""
+    from applyfirst import own_window
+
+    def no_start(cmd):
+        raise AssertionError("a test tried to start a real browser; fake own_window._start")
+
+    monkeypatch.setattr(own_window, "_start", no_start)
+    monkeypatch.setattr(own_window, "ensure_window", lambda: (9333, ""))
+    monkeypatch.setattr(own_window, "node_ok", lambda: True)
+
+
 ALEX = {
     "name": {"first": "Alex", "last": "Rivera", "preferred": ""},
     "email": "alex.rivera@example.com",

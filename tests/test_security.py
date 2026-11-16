@@ -127,6 +127,6 @@ def test_chrome_runs_are_told_to_close_their_tabs(tmp_home, monkeypatch):
     claude.run("find jobs", browser="chrome-extension")
     assert "tabs_close_mcp" in seen["input"] and seen["input"].startswith("find jobs")
     claude.run("find jobs", browser="playwright")
-    assert "tabs_close_mcp" not in seen["input"]
+    assert "tabs_close_mcp" not in seen["input"] and "browser_close" in seen["input"]
     claude.run("find jobs")
     assert seen["input"] == "find jobs"

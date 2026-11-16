@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import config, store
+from . import config, own_window, store
 
 
 def read_rule(path: str) -> str:
@@ -123,6 +123,32 @@ def chrome_info(user_data: Path | None = None) -> dict:
     return {"chrome": chrome, "extension": extension, "connected": connected}
 
 
+# The two routes a run can take to a browser. "auto" and the old "playwright" are setting values
+# only; resolve_browser turns any setting into one of these two.
+ROUTE_EXTENSION = "chrome-extension"    # the person's own Chrome, through the Claude in Chrome extension
+ROUTE_OWN_WINDOW = "own-window"         # a Chrome window applyfirst opens itself, through Playwright MCP
+
+
+def resolve_browser(setting: str | None = None, info: dict | None = None) -> str:
+    """The route a browser run takes. An explicit choice is honored; "auto" (the default) uses the
+    person's own Chrome when Chrome, the extension and the `claude --chrome` link are all in place,
+    and otherwise the applyfirst window, which needs nothing installed beyond Node.js.
+    "playwright" is the old name for the applyfirst window and still works."""
+    if setting is None:
+        setting = config.get(config.load_settings(), "apply.browser", "auto")
+    if setting == ROUTE_EXTENSION:
+        return ROUTE_EXTENSION
+    if setting in (ROUTE_OWN_WINDOW, "playwright"):
+        return ROUTE_OWN_WINDOW
+    try:
+        c = info if info is not None else chrome_info()
+    except OSError:
+        c = {}
+    if c.get("chrome") and c.get("extension") and c.get("connected"):
+        return ROUTE_EXTENSION
+    return ROUTE_OWN_WINDOW
+
+
 # Every run in the person's own Chrome opens its tabs in a new tab group. Chrome removes a group
 # when its last tab closes, so closing the tabs is what cleans the group up.
 CHROME_TABS_RULE = (
@@ -132,12 +158,22 @@ CHROME_TABS_RULE = (
     "a tab these instructions tell you to leave open: leave that one and close all the others."
 )
 
+# The applyfirst window is one browser that closes for good when its last tab closes, and the tab
+# left open for review is the point of the run. So: never close the browser, never close the last tab.
+OWN_WINDOW_TABS_RULE = (
+    "TABS: this is a Chrome window applyfirst opened for the person. Open what you need with\n"
+    "browser_tabs (action new) and work in your own tab. Never call browser_close: it closes the\n"
+    "window. Before you give your final answer, close the tabs you opened (browser_tabs, action\n"
+    "close), except a tab these instructions tell you to leave open: leave that one. Never close\n"
+    "the last tab in the window; the window closes with it."
+)
+
 
 def run(
     prompt: str,
     run_id: str | None = None,
     *,
-    browser: str | None = None,          # None | "chrome-extension" | "playwright"
+    browser: str | None = None,          # None (no browser) | a route or a setting value, see resolve_browser
     allowed_tools: list[str] | None = None,
     json_schema: dict | None = None,
     model: str | None = None,
@@ -148,6 +184,8 @@ def run(
     mcp_servers: dict | None = None,         # extra MCP servers {name: config}; all their tools allowed
 ) -> Result:
     s = config.load_settings()
+    if browser and browser not in (ROUTE_EXTENSION, ROUTE_OWN_WINDOW):
+        browser = resolve_browser(browser)
     left = budget_left(s)
     if left is not None and left <= 0:
         cap = config.get(s, "claude.daily_budget_usd")
@@ -170,17 +208,20 @@ def run(
     # 2.1.325, seen 2026-11-15). So a run with files to attach gets the Read tool, allowed for
     # exactly those files; any other read is refused by "dontAsk".
     # Each file under its given path and, when a symlink is involved (macOS /tmp, /home), its real one.
+    # The applyfirst window needs none of this: Playwright MCP attaches files itself, but only from
+    # its workspace folder (the run's working directory), so those files are copied in below.
     uploads = list(dict.fromkeys(
-        p for f in (upload_files or []) if f for p in (os.path.abspath(f), os.path.realpath(f)))) if browser else []
+        p for f in (upload_files or []) if f for p in (os.path.abspath(f), os.path.realpath(f)))) \
+        if browser == ROUTE_EXTENSION else []
     tools = ["ToolSearch"] if browser else []
     if uploads:
         tools.append("Read")
     cmd += ["--tools", ",".join(tools)]
     allowed = list(allowed_tools or [])
     allowed += [read_rule(f) for f in uploads]
-    if browser == "chrome-extension":
+    if browser == ROUTE_EXTENSION:
         allowed.append("mcp__claude-in-chrome__*")
-    elif browser == "playwright":
+    elif browser == ROUTE_OWN_WINDOW:
         allowed.append("mcp__playwright__*")
     servers = dict(mcp_servers or {})
     allowed += [f"mcp__{name}__*" for name in servers]
@@ -188,14 +229,18 @@ def run(
         cmd += ["--allowedTools", *allowed]
     cmd += ["--permission-mode", "dontAsk"]
     tmp_files: list[str] = []
-    if browser == "chrome-extension":
+    if browser == ROUTE_EXTENSION:
         cmd += ["--chrome"]
-    elif browser == "playwright":
-        profile_dir = str(config.path("browser-profile"))
-        servers["playwright"] = {
-            "command": "npx",
-            "args": ["@playwright/mcp@latest", "--user-data-dir", profile_dir],
-        }
+    elif browser == ROUTE_OWN_WINDOW:
+        if not own_window.node_ok():
+            return Result(False, error=own_window.NO_NODE)
+        port, why = own_window.ensure_window()
+        if not port:
+            return Result(False, error=why)
+        servers["playwright"] = own_window.mcp_config(port)
+        # The window's profile holds the person's sign-ins. No run may Read it, whatever else is
+        # allowed (a deny rule beats an allow rule).
+        cmd += ["--disallowedTools", read_rule(str(own_window.profile_dir())).rstrip(")") + "/**)"]
     if servers:
         mcp = {"mcpServers": servers}
         fd, p = tempfile.mkstemp(suffix=".json")
@@ -208,13 +253,22 @@ def run(
 
     if run_id:
         store.log(run_id, f"claude: starting ({len(prompt)} chars, browser={browser})")
-    if browser == "chrome-extension":
+    if browser == ROUTE_EXTENSION:
         prompt = prompt.rstrip() + "\n\n" + CHROME_TABS_RULE
+    elif browser == ROUTE_OWN_WINDOW:
+        prompt = prompt.rstrip() + "\n\n" + OWN_WINDOW_TABS_RULE
     # With Read switched on, Claude Code also reads anything under its working directory without
     # asking. The applyfirst home holds the profile and the email password, so a run that can Read
     # starts in an empty folder of its own; the files to attach are allowed one by one above.
-    sandbox = tempfile.mkdtemp(prefix="applyfirst-run-") if uploads and not cwd else None
+    # An applyfirst-window run starts in an empty folder too: it is Playwright MCP's workspace.
+    sandbox = tempfile.mkdtemp(prefix="applyfirst-run-") if (uploads or browser == ROUTE_OWN_WINDOW) and not cwd else None
     try:
+        if browser == ROUTE_OWN_WINDOW and sandbox:
+            for i, f in enumerate(f for f in (upload_files or []) if f and os.path.exists(f)):
+                dest = os.path.join(sandbox, f"f{i}", os.path.basename(f))
+                os.makedirs(os.path.dirname(dest))
+                shutil.copy2(f, dest)
+                prompt = prompt.replace(os.path.abspath(f), dest)
         proc = subprocess.run(
             cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
             timeout=timeout, cwd=cwd or sandbox or str(config.home()),

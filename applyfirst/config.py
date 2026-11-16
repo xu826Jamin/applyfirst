@@ -114,7 +114,12 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "cover_letters": "when-required",     # never | when-required | always
         "future_commitments": "yes",   # yes | literal  (relocation, start date, term, travel)
         "verify_resume_lines": True,   # every resume line must trace to the experience bank
-        "browser": "chrome-extension", # chrome-extension (Claude in Chrome) | playwright
+        # auto (your own Chrome when Claude in Chrome is set up, else the applyfirst window)
+        # | own-window (a Chrome window applyfirst opens; sign in to job sites there once)
+        # | chrome-extension (your own Chrome and its sign-ins, through Claude in Chrome)
+        # "playwright" is the old name for own-window and still works.
+        "browser": "auto",
+        "browser_setting_version": 2,  # files saved before 2 spelled out "chrome-extension" as a default
         "pace_seconds": 3,             # minimum gap between requests to one site
     },
     "tracker": {
@@ -145,7 +150,6 @@ WARNINGS: dict[str, str] = {
     "apply.verify_resume_lines": "With this off, generated resume lines are not checked against your experience.",
     "apply.pace_seconds": "Below about 3 seconds, job sites start refusing requests.",
     "claude.daily_budget_usd": "At 0 there is no cap: a large batch can use a lot of your Claude plan in one day.",
-    "apply.browser":"The Playwright browser closes when Claude finishes, so in review mode the filled form is lost before you can submit it. Use Chrome for review mode.",
 }
 
 
@@ -188,7 +192,20 @@ def save_profile(data: dict) -> dict:
 
 
 def load_settings() -> dict:
-    return _load("settings.json", DEFAULT_SETTINGS)
+    settings = _load("settings.json", DEFAULT_SETTINGS)
+    # Before "auto" existed the default was written into every saved file as "chrome-extension",
+    # so that value in an older file is the old default, not a choice: it becomes "auto".
+    # A file saved by this version carries browser_setting_version and its value is a choice.
+    try:
+        with open(path("settings.json"), encoding="utf-8") as f:
+            saved = (json.load(f).get("apply") or {})
+    except (OSError, ValueError, AttributeError):
+        saved = {}
+    if saved.get("browser") == "chrome-extension" and not saved.get("browser_setting_version"):
+        settings["apply"]["browser"] = "auto"
+    if settings["apply"].get("browser") == "playwright":      # the old name for the applyfirst window
+        settings["apply"]["browser"] = "own-window"
+    return settings
 
 
 def save_settings(data: dict) -> dict:

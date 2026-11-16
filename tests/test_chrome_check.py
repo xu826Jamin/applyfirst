@@ -23,9 +23,9 @@ def test_extension_in_a_second_profile_counts(tmp_path, monkeypatch):
     assert claude.chrome_info(tmp_path) == {"chrome": True, "extension": True, "connected": True}
 
 
-def test_status_leaves_chrome_out_for_the_playwright_route(monkeypatch):
+def test_status_leaves_chrome_out_for_the_own_window_route(monkeypatch):
     monkeypatch.setattr(claude, "chrome_info", lambda: {"chrome": False, "extension": False, "connected": False})
-    monkeypatch.setattr(config, "load_settings", lambda: {"apply": {"browser": "playwright"}})
+    monkeypatch.setattr(config, "load_settings", lambda: {"apply": {"browser": "own-window"}})
     assert server._chrome_info() is None
     monkeypatch.setattr(config, "load_settings", lambda: {"apply": {"browser": "chrome-extension"}})
     assert server._chrome_info() == {"chrome": False, "extension": False, "connected": False}
