@@ -199,6 +199,15 @@ def test_brief_auto_mode_submits_and_copies_confirmation(alex):
     assert "Do not click the final" not in b
 
 
+def test_brief_closes_tabs_the_person_does_not_need(alex):
+    # Sign-in walls and pending questions are retried in a new tab, so a kept tab is a duplicate.
+    for mode in ("auto", "review"):
+        b = brief(alex, add_posting(f"t:{mode}"), mode)
+        assert "keep the form tab open ONLY when" in b
+        assert "Close the\n  tab, then report needs-you" in b
+        assert "close the tab before you report" in b
+
+
 def test_brief_workday_injects_script(alex):
     p = add_posting("w:1", ats="workday", url="https://acme.wd1.myworkdayjobs.com/x/job/1")
     b = brief(alex, p)
