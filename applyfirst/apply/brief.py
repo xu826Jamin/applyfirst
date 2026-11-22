@@ -82,6 +82,19 @@ def _js_tool(browser: str) -> str:
     return "browser_evaluate" if _own_window(browser) else "javascript_tool"
 
 
+# A needs-you tab is only worth keeping when the person has to act inside it. Every other stop is
+# retried in a fresh tab later, so a kept tab there just piles up as a duplicate.
+NEEDS_YOU_TAB_RULE = (
+    "If you report needs-you, keep the form tab open ONLY when the person must finish something\n"
+    "inside that tab: a CAPTCHA or bot check, a code box, a legal agreement or consent they must\n"
+    "accept, a link or file only they have (a video, a transcript), or a filled form waiting for\n"
+    "their submit. For every other needs-you stop, close the tab before you report: a sign-in or\n"
+    "create-account wall (they sign in on their own and the application is retried in a new tab),\n"
+    "and required questions you put in pending_questions (they answer those in applyfirst, not\n"
+    "in the tab, and the retry opens a new one)."
+)
+
+
 def _mode_rules(mode: str) -> str:
     if mode == "auto":
         return (
@@ -90,16 +103,14 @@ def _mode_rules(mode: str) -> str:
             "confirmation_text. Submitted is only true when you saw a confirmation on the page;\n"
             "if you clicked submit and saw none, report needs-you and say so. Close the tab you\n"
             "opened once the application is submitted, and close it too if you report failed.\n"
-            "If you report needs-you, leave the form tab open where you stopped so the person can\n"
-            "finish it there."
+            + NEEDS_YOU_TAB_RULE
         )
     return (
         "MODE: review. Fill every field and attach the files, then STOP. Do not click the final\n"
         "submit button (Submit, Submit Application, Send Application, or the last button of the\n"
         "form), and do not press Enter inside the form. Leave the tab open on the finished form\n"
         "so the person can read it and press submit themselves, and report ready-to-submit.\n"
-        "If you report needs-you, leave the form tab open where you stopped. If you report failed,\n"
-        "close it."
+        "If you report failed, close the tab.\n" + NEEDS_YOU_TAB_RULE
     )
 
 
@@ -229,8 +240,8 @@ def build_brief(
         "- Before the last step, read the whole review page back: name, email, phone, resume file\n"
         "  name, start date, work authorization.\n"
         "- Sign-in walls: if the form needs an account you are not already signed in to, or asks to\n"
-        "  create one, stop. Do not create accounts, type passwords or use reset flows. Report\n"
-        "  needs-you with the reason, for example 'sign-in needed: <site>'.\n"
+        "  create one, stop. Do not create accounts, type passwords or use reset flows. Close the\n"
+        "  tab, then report needs-you with the reason, for example 'sign-in needed: <site>'.\n"
         "- CAPTCHAs and bot checks: stop and report needs-you, for example 'CAPTCHA on <site>'.\n"
         + (_email_code_rule(email_code_tool) if mode == "auto" else "") +
         "- A REQUIRED question that has no standard answer and no learned answer: do not guess and\n"
